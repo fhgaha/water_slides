@@ -1,4 +1,13 @@
-use bevy::{prelude::*, window::WindowResolution};
+use std::array;
+
+use bevy::{
+    prelude::*,
+    render::{
+        mesh::{Indices, PrimitiveTopology, RectangleMeshBuilder},
+        render_asset::RenderAssetUsages,
+    },
+    window::WindowResolution,
+};
 use bevy_mod_raycast::prelude::*;
 use bevy_rts_camera::*;
 
@@ -13,14 +22,14 @@ impl Plugin for GamePlugin {
             DefaultPlugins.set(WindowPlugin {
                 primary_window: Some(Window {
                     resolution: WindowResolution::new(800., 600.),
-					position: WindowPosition::At(IVec2::ZERO),
+                    position: WindowPosition::At(IVec2::ZERO),
                     ..default()
                 }),
                 ..default()
             }),
             RtsCameraPlugin,
         ))
-        .add_systems(Startup, setup)
+        .add_systems(Startup, (setup, setup_cursor, setup_verts))
         .add_systems(Update, draw_cursor);
     }
 }
@@ -34,7 +43,7 @@ fn setup(
     commands.spawn((
         PbrBundle {
             mesh: meshes.add(Plane3d::default().mesh().size(80.0, 80.0)),
-			material: materials.add(Color::linear_rgba(0.3, 0.5, 0., 0.5)),
+            material: materials.add(Color::linear_rgba(0.3, 0.5, 0., 0.0)),
             ..default()
         },
         // Add `Ground` component to any entity you want the camera to treat as ground.
@@ -63,8 +72,13 @@ fn setup(
         RtsCamera::default(),
         RtsCameraControls::my_controls(),
     ));
+}
 
-    //Cursor
+fn setup_cursor(
+    mut commands: Commands,
+    mut meshes: ResMut<Assets<Mesh>>,
+    mut materials: ResMut<Assets<StandardMaterial>>,
+) {
     commands.spawn((
         PbrBundle {
             mesh: meshes.add(Sphere::new(1.)),
@@ -100,7 +114,7 @@ fn draw_cursor(
     //     },
     //     &mut gizmos,
     // );
-	let intersections = raycast.cast_ray(
+    let intersections = raycast.cast_ray(
         ray,
         &RaycastSettings {
             filter: &|e| ground_q.contains(e),
@@ -126,4 +140,37 @@ fn draw_cursor(
         c.translation = point;
         println!("pt: {}", point);
     }
+}
+
+fn setup_verts(
+    mut commands: Commands,
+    mut meshes: ResMut<Assets<Mesh>>,
+    mut materials: ResMut<Assets<StandardMaterial>>,
+) {
+    let points = vec![
+        Vec3::new(-1., 1., 0.),
+        Vec3::new(1., 1., 0.),
+        Vec3::new(-1., -1., 0.),
+        Vec3::new(1., -1., 0.),
+    ];
+
+    let tri_indices = vec![2, 1, 0, 1, 2, 3];
+
+    let mut mesh = Mesh::new(
+        PrimitiveTopology::TriangleList,
+        RenderAssetUsages::RENDER_WORLD | RenderAssetUsages::MAIN_WORLD,
+    );
+    mesh.insert_attribute(Mesh::ATTRIBUTE_POSITION, points);
+    mesh.insert_indices(Indices::U32(tri_indices));
+
+    let mesh_handle = meshes.add(mesh);
+
+    commands.spawn(PbrBundle {
+        mesh: mesh_handle,
+        material: materials.add(StandardMaterial {
+            base_color: Color::WHITE,
+            ..Default::default()
+        }),
+        ..Default::default()
+    });
 }
