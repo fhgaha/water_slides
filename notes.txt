@@ -1,0 +1,2 @@
+Disable cargo check on build to speed up the thing:
+set "rust-analyzer.checkOnSave.extraArgs": ["--target-dir", "/path/to/proect/target/check"]
