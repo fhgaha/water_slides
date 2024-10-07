@@ -1,2 +1,22 @@
-Disable cargo check on build to speed up the thing:
-set "rust-analyzer.checkOnSave.extraArgs": ["--target-dir", "/path/to/proect/target/check"]
+ __   __     ______     ______   ______     ______    
+/\ "-.\ \   /\  __ \   /\__  _\ /\  ___\   /\  ___\   
+\ \ \-.  \  \ \ \/\ \  \/_/\ \/ \ \  __\   \ \___  \  
+ \ \_\\"\_\  \ \_____\    \ \_\  \ \_____\  \/\_____\ 
+  \/_/ \/_/   \/_____/     \/_/   \/_____/   \/_____/ 
+                                                      
+
+--  Disable cargo check on build to speed up the thing:
+	set "rust-analyzer.checkOnSave.extraArgs": ["--target-dir", "/path/to/proect/target/check"]
+
+ ______   ______     _____     ______    
+/\__  _\ /\  __ \   /\  __-.  /\  __ \   
+\/_/\ \/ \ \ \/\ \  \ \ \/\ \ \ \ \/\ \  
+   \ \_\  \ \_____\  \ \____-  \ \_____\ 
+    \/_/   \/_____/   \/____/   \/_____/ 
+                                         
+- Draw cylinder tubes
+- Draw waterpool bellow
+- Let people slide down there
+- Make scale increase on every next level
+
+Goal is to reach amount of people sliding to the pool per second or something like that

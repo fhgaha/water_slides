@@ -1,9 +1,8 @@
-use std::array;
 
 use bevy::{
     prelude::*,
     render::{
-        mesh::{Indices, PrimitiveTopology, RectangleMeshBuilder},
+        mesh::{Indices, PrimitiveTopology},
         render_asset::RenderAssetUsages,
     },
     window::WindowResolution,
@@ -29,8 +28,23 @@ impl Plugin for GamePlugin {
             }),
             RtsCameraPlugin,
         ))
-        .add_systems(Startup, (setup, setup_cursor, setup_verts))
-        .add_systems(Update, draw_cursor);
+        .add_systems(
+            Startup,
+            (
+                setup,
+                setup_cursor,
+                //draw_quad
+                setup_control_points,
+            ),
+        )
+        .add_systems(
+            Update,
+            (
+                draw_cursor,
+                // check_quad_normals_system
+                (update_control_point_state, update_control_points_positions).chain(),
+            ),
+        );
     }
 }
 
@@ -66,6 +80,18 @@ fn setup(
         ..default()
     });
 
+    //Test light
+    // commands.spawn(PointLightBundle {
+    //     point_light: PointLight {
+    //         intensity: 100_000.,
+    //         shadows_enabled: true,
+    //         ..default()
+    //     },
+    //     transform: Transform::from_rotation(Quat::from_euler(EulerRot::YXZ, 0., 0., 1.)),
+
+    //     ..default()
+    // });
+
     // Camera
     commands.spawn((
         Camera3dBundle::default(),
@@ -95,7 +121,7 @@ fn draw_cursor(
     ground_q: Query<&GlobalTransform, With<Ground>>,
     windows: Query<&Window>,
     mut cursors: Query<&mut Transform, With<Cursor>>,
-    // mut gizmos: Gizmos,
+    mut gizmos: Gizmos,
     mut raycast: Raycast,
 ) {
     let (camera, camera_transform) = cameras.single();
@@ -133,16 +159,15 @@ fn draw_cursor(
 
     //Gizmo sphere
     // gizmos
-    //     .sphere(point, default(), 0.2, Color::WHITE)
+    //     .sphere(point, default(), 1., Color::WHITE)
     //     .resolution(8);
 
     for mut c in cursors.iter_mut() {
         c.translation = point;
-        println!("pt: {}", point);
     }
 }
 
-fn setup_verts(
+fn draw_quad(
     mut commands: Commands,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
@@ -162,6 +187,7 @@ fn setup_verts(
     );
     mesh.insert_attribute(Mesh::ATTRIBUTE_POSITION, points);
     mesh.insert_indices(Indices::U32(tri_indices));
+    mesh.compute_normals();
 
     let mesh_handle = meshes.add(mesh);
 
@@ -169,8 +195,123 @@ fn setup_verts(
         mesh: mesh_handle,
         material: materials.add(StandardMaterial {
             base_color: Color::WHITE,
-            ..Default::default()
+            ..default()
         }),
-        ..Default::default()
+        ..default()
     });
+}
+
+fn check_quad_normals_system(
+    mut lights: Query<&mut Transform, With<PointLight>>,
+    time: Res<Time>,
+    mut gismos: Gizmos,
+) {
+    for mut transform in lights.iter_mut() {
+        let mut new_translation = Vec3::new(
+            transform.translation.x,
+            transform.translation.y,
+            transform.translation.z,
+        );
+        new_translation.z = (time.elapsed_seconds() * 10.).sin();
+        transform.translation = new_translation;
+
+        gismos
+            .sphere(new_translation, default(), 0.2, Color::WHITE)
+            .resolution(8);
+    }
+}
+
+#[derive(Component)]
+struct RoadSegment {
+    control_points: [Transform; 4],
+}
+
+impl RoadSegment {
+    pub fn get_pos(&self, i: usize) -> Vec3 {
+        self.control_points[i].translation
+    }
+}
+
+enum ControlPointState {
+    None,
+    Drag,
+}
+
+#[derive(Component)]
+struct ControlPoint {
+    pub state: ControlPointState,
+}
+
+fn setup_control_points(
+    mut commands: Commands,
+    mut meshes: ResMut<Assets<Mesh>>,
+    mut materials: ResMut<Assets<StandardMaterial>>,
+) {
+    let trfrms = vec![
+        Transform::from_xyz(-10., 0., 10.),
+        Transform::from_xyz(-10., 0., -10.),
+        Transform::from_xyz(10., 0., 10.),
+        Transform::from_xyz(10., 0., -10.),
+    ];
+
+    for t in trfrms {
+        commands.spawn((
+            PbrBundle {
+                mesh: meshes.add(Sphere::new(1.)),
+                material: materials.add(Color::srgb(1., 1., 1.)),
+                transform: t,
+                ..default()
+            },
+            ControlPoint {
+                state: ControlPointState::None,
+            },
+        ));
+    }
+}
+
+fn update_control_point_state(
+    cameras: Query<(&Camera, &GlobalTransform)>,
+    windows: Query<&Window>,
+    mut raycast: Raycast,
+    mut control_points: Query<&mut ControlPoint>,
+    buttons: Res<ButtonInput<MouseButton>>,
+) {
+    let (camera, camera_transform) = cameras.single();
+
+    let Some(cursor_position) = windows.single().cursor_position() else {
+        return;
+    };
+    let Some(ray) = camera.viewport_to_world(camera_transform, cursor_position) else {
+        return;
+    };
+
+    let intersections = raycast.cast_ray(
+        ray,
+        &RaycastSettings {
+            filter: &|e| control_points.contains(e),
+            ..default()
+        },
+    );
+    if intersections.len() > 0 {
+        if let Ok(mut ctrl_pt) = control_points.get_mut(intersections[0].0) {
+            if buttons.pressed(MouseButton::Left) {
+                ctrl_pt.state = ControlPointState::Drag;
+            } else {
+                ctrl_pt.state = ControlPointState::None;
+            }
+        }
+    }
+}
+
+fn update_control_points_positions(
+    cursors: Query<&Transform, (With<Cursor>, Without<ControlPoint>)>,
+    mut ctrl_pts_transforms: Query<(&mut Transform, &ControlPoint)>,
+) {
+    let cursor = cursors.single();
+
+    for (mut t, ctrl_pt) in ctrl_pts_transforms.iter_mut() {
+        if let ControlPointState::Drag = ctrl_pt.state {
+            t.translation = cursor.translation
+        }
+    }
 }
