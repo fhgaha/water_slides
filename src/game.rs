@@ -1,4 +1,5 @@
 use bevy::{
+    color::palettes::css::*,
     prelude::*,
     render::{
         mesh::{Indices, PrimitiveTopology},
@@ -43,6 +44,7 @@ impl Plugin for GamePlugin {
             (
                 draw_cursor,
                 // check_quad_normals_system
+                draw_gizmos,
             ),
         );
     }
@@ -219,4 +221,11 @@ fn check_quad_normals_system(
             .sphere(new_translation, default(), 0.2, Color::WHITE)
             .resolution(8);
     }
+}
+
+fn draw_gizmos(mut gizmos: Gizmos) {
+    //zero
+    gizmos.arrow(Vec3::ZERO, Vec3::new(1., 0., 0.), RED);
+    gizmos.arrow(Vec3::ZERO, Vec3::new(0., 1., 0.), GREEN);
+    gizmos.arrow(Vec3::ZERO, Vec3::new(0., 0., 1.), BLUE);
 }
