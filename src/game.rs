@@ -1,13 +1,14 @@
+mod my_camera;
+
 use bevy::{
-    prelude::*,
-    render::{
+    color::palettes::css::*, prelude::*, render::{
         mesh::{Indices, PrimitiveTopology},
         render_asset::RenderAssetUsages,
-    },
-    window::WindowResolution,
+    }, window::WindowResolution
 };
 use bevy_mod_raycast::prelude::*;
 use bevy_rts_camera::*;
+use my_camera::MyCameraPlugin;
 
 use crate::road_segment::RoadSegmentPlugin;
 
@@ -27,7 +28,8 @@ impl Plugin for GamePlugin {
                 }),
                 ..default()
             }),
-            RtsCameraPlugin,
+            // RtsCameraPlugin,
+            MyCameraPlugin,
             RoadSegmentPlugin,
         ))
         .add_systems(
@@ -43,6 +45,7 @@ impl Plugin for GamePlugin {
             (
                 draw_cursor,
                 // check_quad_normals_system
+                draw_gizmos,
             ),
         );
     }
@@ -56,8 +59,8 @@ fn setup(
     // Ground
     commands.spawn((
         PbrBundle {
-            mesh: meshes.add(Plane3d::default().mesh().size(80.0, 80.0)),
-            material: materials.add(Color::linear_rgba(0.3, 0.5, 0., 0.0)),
+            mesh: meshes.add(Plane3d::default().mesh().size(80., 80.)),
+            material: materials.add(Color::linear_rgba(0.3, 0.5, 0.0, 0.4)),
             ..default()
         },
         // Add `Ground` component to any entity you want the camera to treat as ground.
@@ -92,12 +95,12 @@ fn setup(
     //     ..default()
     // });
 
-    // Camera
-    commands.spawn((
-        Camera3dBundle::default(),
-        RtsCamera::default(),
-        RtsCameraControls::my_controls(),
-    ));
+    // // RtsCamera
+    // commands.spawn((
+    //     Camera3dBundle::default(),
+    //     RtsCamera::default(),
+    //     RtsCameraControls::my_controls(),
+    // ));
 }
 
 fn setup_cursor(
@@ -121,8 +124,8 @@ fn draw_cursor(
     ground_q: Query<&GlobalTransform, With<Ground>>,
     windows: Query<&Window>,
     mut cursors: Query<&mut Transform, With<Cursor>>,
-    // mut gizmos: Gizmos,
     mut raycast: Raycast,
+    mut gizmos: Gizmos,
 ) {
     let (camera, camera_transform) = cameras.single();
     // let ground = ground_q.single();
@@ -152,6 +155,8 @@ fn draw_cursor(
         false => Vec3::ZERO,
     };
 
+    // println!("{point}");
+
     //Gizmo cirle
     // gizmos
     //     .circle(point + ground.up() * 0.01, ground.up(), 0.2, Color::WHITE)
@@ -162,6 +167,7 @@ fn draw_cursor(
     //     .sphere(point, default(), 1., Color::WHITE)
     //     .resolution(8);
 
+    //Mesh sphere
     for mut c in cursors.iter_mut() {
         c.translation = point;
     }
@@ -173,10 +179,10 @@ fn draw_quad(
     mut materials: ResMut<Assets<StandardMaterial>>,
 ) {
     let points = vec![
-        Vec3::new(-1., 1., 0.),
-        Vec3::new(1., 1., 0.),
+        Vec3::new(-1.,  1., 0.),
+        Vec3::new( 1.,  1., 0.),
         Vec3::new(-1., -1., 0.),
-        Vec3::new(1., -1., 0.),
+        Vec3::new( 1., -1., 0.),
     ];
 
     let tri_indices = vec![2, 1, 0, 1, 2, 3];
@@ -219,4 +225,11 @@ fn check_quad_normals_system(
             .sphere(new_translation, default(), 0.2, Color::WHITE)
             .resolution(8);
     }
+}
+
+fn draw_gizmos(mut gizmos: Gizmos) {
+    //zero
+    gizmos.arrow(Vec3::ZERO, Vec3::new(1., 0., 0.), RED);
+    gizmos.arrow(Vec3::ZERO, Vec3::new(0., 1., 0.), GREEN);
+    gizmos.arrow(Vec3::ZERO, Vec3::new(0., 0., 1.), BLUE);
 }

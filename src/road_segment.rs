@@ -38,6 +38,7 @@ struct ControlPointDraggable {
 }
 
 #[derive(Component)]
+#[allow(dead_code)]
 struct Curve(CubicCurve<Vec3>);
 
 fn setup(
@@ -46,10 +47,10 @@ fn setup(
     mut materials: ResMut<Assets<StandardMaterial>>,
 ) {
     let positions = [
-        Vec3::new(-10., 0., 10.),
+        Vec3::new(-10., 0.,  10.),
         Vec3::new(-10., 0., -10.),
-        Vec3::new(10., 0., 10.),
-        Vec3::new(10., 0., -10.),
+        Vec3::new( 10., 0., -10.),
+        Vec3::new( 10., 0.,  10.),
     ];
 
     for p in positions {
@@ -67,7 +68,9 @@ fn setup(
     }
 
     //curve
-    commands.spawn((Curve(CubicBezier::new([positions]).to_curve()),));
+    commands.spawn(
+        Curve(CubicBezier::new([positions]).to_curve())
+    );
 }
 
 fn update_states(
@@ -127,7 +130,7 @@ fn draw_spline(
         .collect();
 
     if let Ok(array) = pts[..].try_into() {
-        let curve= CubicBezier::new(vec![array]).to_curve();
+        let curve = CubicBezier::new(vec![array]).to_curve();
         let curve_pts: Vec<_> = curve.iter_positions(100).collect();
 
         gizmos.linestrip(curve_pts, Color::WHITE);
