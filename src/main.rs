@@ -1,12 +1,12 @@
 mod game;
+mod road_segment;
 
 use bevy::prelude::*;
-use game::GamePlugin;
 
 fn main() {
     App::new()
         .add_plugins((
-            GamePlugin, 
+            game::GamePlugin, 
             ))
         .run();
 }

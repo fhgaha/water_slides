@@ -1,4 +1,3 @@
-
 use bevy::{
     prelude::*,
     render::{
@@ -10,10 +9,12 @@ use bevy::{
 use bevy_mod_raycast::prelude::*;
 use bevy_rts_camera::*;
 
+use crate::road_segment::RoadSegmentPlugin;
+
 pub struct GamePlugin;
 
 #[derive(Component)]
-struct Cursor;
+pub struct Cursor;
 
 impl Plugin for GamePlugin {
     fn build(&self, app: &mut App) {
@@ -27,6 +28,7 @@ impl Plugin for GamePlugin {
                 ..default()
             }),
             RtsCameraPlugin,
+            RoadSegmentPlugin,
         ))
         .add_systems(
             Startup,
@@ -34,7 +36,6 @@ impl Plugin for GamePlugin {
                 setup,
                 setup_cursor,
                 //draw_quad
-                setup_control_points,
             ),
         )
         .add_systems(
@@ -42,7 +43,6 @@ impl Plugin for GamePlugin {
             (
                 draw_cursor,
                 // check_quad_normals_system
-                (update_control_point_state, update_control_points_positions).chain(),
             ),
         );
     }
@@ -121,7 +121,7 @@ fn draw_cursor(
     ground_q: Query<&GlobalTransform, With<Ground>>,
     windows: Query<&Window>,
     mut cursors: Query<&mut Transform, With<Cursor>>,
-    mut gizmos: Gizmos,
+    // mut gizmos: Gizmos,
     mut raycast: Raycast,
 ) {
     let (camera, camera_transform) = cameras.single();
@@ -218,100 +218,5 @@ fn check_quad_normals_system(
         gismos
             .sphere(new_translation, default(), 0.2, Color::WHITE)
             .resolution(8);
-    }
-}
-
-#[derive(Component)]
-struct RoadSegment {
-    control_points: [Transform; 4],
-}
-
-impl RoadSegment {
-    pub fn get_pos(&self, i: usize) -> Vec3 {
-        self.control_points[i].translation
-    }
-}
-
-enum ControlPointState {
-    None,
-    Drag,
-}
-
-#[derive(Component)]
-struct ControlPoint {
-    pub state: ControlPointState,
-}
-
-fn setup_control_points(
-    mut commands: Commands,
-    mut meshes: ResMut<Assets<Mesh>>,
-    mut materials: ResMut<Assets<StandardMaterial>>,
-) {
-    let trfrms = vec![
-        Transform::from_xyz(-10., 0., 10.),
-        Transform::from_xyz(-10., 0., -10.),
-        Transform::from_xyz(10., 0., 10.),
-        Transform::from_xyz(10., 0., -10.),
-    ];
-
-    for t in trfrms {
-        commands.spawn((
-            PbrBundle {
-                mesh: meshes.add(Sphere::new(1.)),
-                material: materials.add(Color::srgb(1., 1., 1.)),
-                transform: t,
-                ..default()
-            },
-            ControlPoint {
-                state: ControlPointState::None,
-            },
-        ));
-    }
-}
-
-fn update_control_point_state(
-    cameras: Query<(&Camera, &GlobalTransform)>,
-    windows: Query<&Window>,
-    mut raycast: Raycast,
-    mut control_points: Query<&mut ControlPoint>,
-    buttons: Res<ButtonInput<MouseButton>>,
-) {
-    let (camera, camera_transform) = cameras.single();
-
-    let Some(cursor_position) = windows.single().cursor_position() else {
-        return;
-    };
-    let Some(ray) = camera.viewport_to_world(camera_transform, cursor_position) else {
-        return;
-    };
-
-    let intersections = raycast.cast_ray(
-        ray,
-        &RaycastSettings {
-            filter: &|e| control_points.contains(e),
-            ..default()
-        },
-    );
-    if intersections.len() > 0 {
-        if let Ok(mut ctrl_pt) = control_points.get_mut(intersections[0].0) {
-            if buttons.pressed(MouseButton::Left) {
-                ctrl_pt.state = ControlPointState::Drag;
-            } else {
-                ctrl_pt.state = ControlPointState::None;
-            }
-        }
-    }
-}
-
-fn update_control_points_positions(
-    cursors: Query<&Transform, (With<Cursor>, Without<ControlPoint>)>,
-    mut ctrl_pts_transforms: Query<(&mut Transform, &ControlPoint)>,
-) {
-    let cursor = cursors.single();
-
-    for (mut t, ctrl_pt) in ctrl_pts_transforms.iter_mut() {
-        if let ControlPointState::Drag = ctrl_pt.state {
-            t.translation = cursor.translation
-        }
     }
 }
