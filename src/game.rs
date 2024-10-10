@@ -1,7 +1,13 @@
 mod my_camera;
 
 use bevy::{
+<<<<<<< HEAD
     color::palettes::css::*, prelude::*, render::{
+=======
+    color::palettes::css::*,
+    prelude::*,
+    render::{
+>>>>>>> 75baa02a8c91f212c55ccf02f36080753bf8121a
         mesh::{Indices, PrimitiveTopology},
         render_asset::RenderAssetUsages,
     }, window::WindowResolution
