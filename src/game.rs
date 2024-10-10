@@ -1,16 +1,13 @@
 mod my_camera;
 
 use bevy::{
-<<<<<<< HEAD
-    color::palettes::css::*, prelude::*, render::{
-=======
     color::palettes::css::*,
     prelude::*,
     render::{
->>>>>>> 75baa02a8c91f212c55ccf02f36080753bf8121a
         mesh::{Indices, PrimitiveTopology},
         render_asset::RenderAssetUsages,
-    }, window::WindowResolution
+    },
+    window::WindowResolution,
 };
 use bevy_mod_raycast::prelude::*;
 use bevy_rts_camera::*;
@@ -185,10 +182,10 @@ fn draw_quad(
     mut materials: ResMut<Assets<StandardMaterial>>,
 ) {
     let points = vec![
-        Vec3::new(-1.,  1., 0.),
-        Vec3::new( 1.,  1., 0.),
+        Vec3::new(-1., 1., 0.),
+        Vec3::new(1., 1., 0.),
         Vec3::new(-1., -1., 0.),
-        Vec3::new( 1., -1., 0.),
+        Vec3::new(1., -1., 0.),
     ];
 
     let tri_indices = vec![2, 1, 0, 1, 2, 3];
