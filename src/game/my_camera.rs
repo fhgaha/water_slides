@@ -1,4 +1,4 @@
-use bevy::{math::VectorSpace, prelude::*};
+use bevy::{math::{NormedVectorSpace, VectorSpace}, prelude::*};
 
 pub struct MyCameraPlugin;
 
@@ -22,6 +22,9 @@ fn setup(mut commands: Commands) {
     ));
 }
 
+//  cam_trm.forward() - moves cam to the looking at
+//  cam_trm.back()    - moves cam away from looking at
+
 fn update_position(
     button_input: Res<ButtonInput<KeyCode>>,
     mut cam_transforms: Query<&mut Transform, With<MyCamTacker>>,
@@ -32,10 +35,10 @@ fn update_position(
 
     // Keyboard pan
     if button_input.pressed(KeyCode::KeyW) {
-        delta += Vec3::from(cam_trm.forward())
+        delta += project_onto_xz(cam_trm.forward().as_vec3()).normalize()
     }
     if button_input.pressed(KeyCode::KeyS) {
-        delta += Vec3::from(cam_trm.back())
+        delta += project_onto_xz(cam_trm.back().as_vec3()).normalize()
     }
     if button_input.pressed(KeyCode::KeyA) {
         delta += Vec3::from(cam_trm.left())
@@ -44,5 +47,11 @@ fn update_position(
         delta += Vec3::from(cam_trm.right())
     }
 
-	cam_trm.translation += delta;
+	cam_trm.translation += delta.normalize();
+}
+
+fn project_onto_xz(v: Vec3) -> Vec3 {
+    let normal = Vec3::Y; // Normal for XZ plane
+    let projection = v - (v.dot(normal) / normal.length_squared()) * normal;
+    projection
 }
