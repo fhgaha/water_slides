@@ -55,3 +55,26 @@ fn project_onto_xz(v: Vec3) -> Vec3 {
     let projection = v - (v.dot(normal) / normal.length_squared()) * normal;
     projection
 }
+
+// fn zoom(
+    // button_input: Res<ButtonInput<MouseButton>>,
+    // mut mouse_motion: EventReader<MouseMotion>,
+    // mut cam_transforms: Query<&mut Transform, With<MyCamTacker>>,
+    // mut primary_window_q: Query<&mut Window, With<PrimaryWindow>>,
+// ) {
+    // let Ok(mut primary_window) = primary_window_q.get_single_mut() else {return;};
+
+    // let mut cam_trm = cam_transforms.single_mut();
+
+    // if button_input.pressed(MouseButton::Right) {
+    //     let mouse_delta = mouse_motion.read().map(|e| e.delta).sum::<Vec2>();
+        
+    //     // Adjust based on window size, so that moving mouse entire width of window
+    //     // will be one half rotation (180 degrees)
+    //     let delta_x = mouse_delta.x / primary_window.width() * PI;
+
+        
+    //     // cam_trm.rotate_around(Vec3::Y, Quat::from_rotation_y(delta_x));
+        
+    // }
+// }
