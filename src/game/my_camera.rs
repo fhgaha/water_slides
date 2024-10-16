@@ -1,4 +1,4 @@
-use std::f32::consts::PI;
+use std::f32::consts::{PI, TAU};
 
 use bevy::{input::mouse::MouseMotion, prelude::*, window::PrimaryWindow};
 
@@ -10,7 +10,8 @@ impl Plugin for MyCameraPlugin {
             .add_systems(Update, 
                 (
                     update_position,
-                    update_rotation
+                    update_rotation,
+                    update_zoom
                 )
             );
     }
@@ -73,10 +74,21 @@ fn update_rotation(
     if button_input.pressed(MouseButton::Right) {
         let mouse_delta: Vec2 = mouse_motion.read().map(|e| e.delta).sum();
 
+        //hor rot
+
         // Adjust based on window size, so that moving mouse entire width of window
         // will be one half rotation (180 degrees)
         let delta_x = mouse_delta.x / primary_window.width() * PI;
 
-        cam_trm.rotate_around(Vec3::Y, Quat::from_rotation_y(-delta_x));
+        cam_trm.rotate_around(Vec3::ZERO, Quat::from_rotation_y(-delta_x));
     }
+}
+
+fn update_zoom(
+    // button_input: Res<ButtonInput<MouseButton>>,
+    // mut mouse_motion: EventReader<MouseMotion>,
+    // mut cam_transforms: Query<&mut Transform, With<MyCamTacker>>,
+    // mut primary_window_q: Query<&mut Window, With<PrimaryWindow>>,
+) {
+    
 }
