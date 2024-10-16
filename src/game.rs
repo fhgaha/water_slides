@@ -98,11 +98,21 @@ fn setup(
     //     ..default()
     // });
 
-    // // RtsCamera
+    // RtsCamera
+    commands.spawn((
+        Camera3dBundle::default(),
+        RtsCamera::default(),
+        RtsCameraControls::my_controls(),
+    ));
+    
+    //// My shitty camera
     // commands.spawn((
-    //     Camera3dBundle::default(),
-    //     RtsCamera::default(),
-    //     RtsCameraControls::my_controls(),
+    //     Camera3dBundle {
+    //         transform: Transform::from_translation(Vec3::new(10.0, 30.0, 0.0))
+    //             .looking_at(Vec3::ZERO, Vec3::Y),
+    //         ..default()
+    //     },
+    //     my_camera::MyCamTacker,
     // ));
 }
 
