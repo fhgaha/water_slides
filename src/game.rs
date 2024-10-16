@@ -83,7 +83,7 @@ fn setup(
             -40.0f32.to_radians(),
             0.0,
         )),
-        ..default()
+        ..default() 
     });
 
     //Test light
