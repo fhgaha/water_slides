@@ -32,10 +32,10 @@ fn update_position(
 
     // Keyboard pan
     if button_input.pressed(KeyCode::KeyW) {
-        delta += Vec3::from(cam_trm.forward())
+        delta += project_onto_xz(cam_trm.forward().as_vec3()).normalize()
     }
     if button_input.pressed(KeyCode::KeyS) {
-        delta += Vec3::from(cam_trm.back())
+        delta += project_onto_xz(cam_trm.back().as_vec3()).normalize()
     }
     if button_input.pressed(KeyCode::KeyA) {
         delta += Vec3::from(cam_trm.left())
@@ -45,4 +45,10 @@ fn update_position(
     }
 
 	cam_trm.translation += delta;
+}
+
+fn project_onto_xz(v: Vec3) -> Vec3 {
+    let normal = Vec3::Y; // Normal for XZ plane
+    let projection = v - (v.dot(normal) / normal.length_squared()) * normal;
+    projection
 }
