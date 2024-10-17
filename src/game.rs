@@ -30,7 +30,7 @@ impl Plugin for GamePlugin {
                     ..default()
                 }),
                 ..default()
-            }),
+            }), 
             // RtsCameraPlugin,
             PanOrbitCameraPlugin,
             RoadSegmentPlugin,
