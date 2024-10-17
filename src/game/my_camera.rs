@@ -1,18 +1,19 @@
-use std::f32::consts::PI;
+use std::f32::consts::{PI, TAU};
 
-use bevy::{
-    input::mouse::MouseMotion,
-    math::{NormedVectorSpace, VectorSpace},
-    prelude::*,
-    window::PrimaryWindow,
-};
+use bevy::{input::mouse::MouseMotion, prelude::*, window::PrimaryWindow};
 
 pub struct MyCameraPlugin;
 
 impl Plugin for MyCameraPlugin {
     fn build(&self, app: &mut App) {
         app.add_systems(Startup, setup)
-            .add_systems(Update, update_position);
+            .add_systems(Update, 
+                (
+                    update_position,
+                    update_rotation,
+                    update_zoom
+                )
+            );
     }
 }
 
@@ -57,7 +58,7 @@ fn update_position(
         delta += Vec3::from(cam_trm.right())
     }
 
-    cam_trm.translation += delta.normalize();
+	cam_trm.translation += delta;
 }
 
 fn project_onto_xz(v: Vec3) -> Vec3 {
@@ -66,23 +67,40 @@ fn project_onto_xz(v: Vec3) -> Vec3 {
     projection
 }
 
-fn zoom(// button_input: Res<ButtonInput<MouseButton>>,
+fn update_rotation(
+    button_input: Res<ButtonInput<MouseButton>>,
+    mut mouse_motion: EventReader<MouseMotion>,
+    mut cam_transforms: Query<&mut Transform, With<MyCamTacker>>,
+    mut primary_window_q: Query<&mut Window, With<PrimaryWindow>>,
+) {
+    let Ok(mut primary_window) = primary_window_q.get_single_mut() else {return;};
+
+    let mut cam_trm = cam_transforms.single_mut();
+
+    if button_input.pressed(MouseButton::Right) {
+        let mouse_delta: Vec2 = mouse_motion.read().map(|e| e.delta).sum();
+
+        //hor rot
+
+        // Adjust based on window size, so that moving mouse entire width of window
+        // will be one half rotation (180 degrees)
+        let delta_x = mouse_delta.x / primary_window.width() * PI;
+
+        // cam_trm.rotate_around(Vec3::ZERO, Quat::from_rotation_y(-delta_x));
+
+
+        let delta_y = mouse_delta.y / 100.;
+        cam_trm.rotate_around(Vec3::ZERO, Quat::from_axis_angle(Vec3::Y, delta_y));
+
+
+    }
+}
+
+fn update_zoom(
+    // button_input: Res<ButtonInput<MouseButton>>,
     // mut mouse_motion: EventReader<MouseMotion>,
     // mut cam_transforms: Query<&mut Transform, With<MyCamTacker>>,
     // mut primary_window_q: Query<&mut Window, With<PrimaryWindow>>,
 ) {
-    // let Ok(mut primary_window) = primary_window_q.get_single_mut() else {return;};
-
-    // let mut cam_trm = cam_transforms.single_mut();
-
-    // if button_input.pressed(MouseButton::Right) {
-    //     let mouse_delta = mouse_motion.read().map(|e| e.delta).sum::<Vec2>();
-
-    //     // Adjust based on window size, so that moving mouse entire width of window
-    //     // will be one half rotation (180 degrees)
-    //     let delta_x = mouse_delta.x / primary_window.width() * PI;
-
-    //     cam_trm.rotate_around(Vec3::Y, Quat::from_rotation_y(delta_x / 100.));
-
-    // }
+    
 }

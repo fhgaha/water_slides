@@ -111,7 +111,7 @@ fn update_positions(
     cursors: Query<&Transform, (With<Cursor>, Without<ControlPointDraggable>)>,
     mut ctrl_pts_transforms: Query<(&mut Transform, &ControlPointDraggable)>,
 ) {
-    let cursor = cursors.single();
+    let Ok(cursor) = cursors.get_single() else {return;};
 
     for (mut t, ctrl_pt) in ctrl_pts_transforms.iter_mut() {
         if let ControlPointState::Drag = ctrl_pt.state {

@@ -1,17 +1,17 @@
 mod my_camera;
 
+use std::f32::consts::{PI, TAU};
+
 use bevy::{
-    color::palettes::css::*,
-    prelude::*,
-    render::{
+    color::palettes::css::*, math::VectorSpace, prelude::*, render::{
         mesh::{Indices, PrimitiveTopology},
         render_asset::RenderAssetUsages,
-    },
-    window::WindowResolution,
+    }, window::WindowResolution
 };
 use bevy_mod_raycast::prelude::*;
 use bevy_rts_camera::*;
 use my_camera::MyCameraPlugin;
+use bevy_panorbit_camera::*;
 
 use crate::road_segment::RoadSegmentPlugin;
 
@@ -32,7 +32,7 @@ impl Plugin for GamePlugin {
                 ..default()
             }),
             // RtsCameraPlugin,
-            MyCameraPlugin,
+            PanOrbitCameraPlugin,
             RoadSegmentPlugin,
         ))
         .add_systems(
@@ -83,37 +83,13 @@ fn setup(
             -40.0f32.to_radians(),
             0.0,
         )),
-        ..default()
+        ..default() 
     });
 
-    //Test light
-    // commands.spawn(PointLightBundle {
-    //     point_light: PointLight {
-    //         intensity: 100_000.,
-    //         shadows_enabled: true,
-    //         ..default()
-    //     },
-    //     transform: Transform::from_rotation(Quat::from_euler(EulerRot::YXZ, 0., 0., 1.)),
-
-    //     ..default()
-    // });
-
-    // RtsCamera
     commands.spawn((
         Camera3dBundle::default(),
-        RtsCamera::default(),
-        RtsCameraControls::my_controls(),
+        PanOrbitCamera::my_setup()
     ));
-    
-    //// My shitty camera
-    // commands.spawn((
-    //     Camera3dBundle {
-    //         transform: Transform::from_translation(Vec3::new(10.0, 30.0, 0.0))
-    //             .looking_at(Vec3::ZERO, Vec3::Y),
-    //         ..default()
-    //     },
-    //     my_camera::MyCamTacker,
-    // ));
 }
 
 fn setup_cursor(
