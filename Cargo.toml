@@ -8,6 +8,7 @@ bevy = { version = "0.14.2", features = ["dynamic_linking"] }
 bevy_mod_raycast = "0.18.0"
 belly = { path = "crates/belly" }
 bevy_rts_camera = { path = "crates/bevy_rts_camera" }
+bevy_panorbit_camera = {path = "crates/bevy_panorbit_camera"}
 
 # Enable a small amount of optimization in the dev profile.
 [profile.dev]

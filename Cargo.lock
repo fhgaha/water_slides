@@ -1357,6 +1357,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "bevy_panorbit_camera"
+version = "0.19.3"
+dependencies = [
+ "bevy 0.14.2",
+]
+
+[[package]]
 name = "bevy_pbr"
 version = "0.13.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -5202,6 +5209,7 @@ dependencies = [
  "belly",
  "bevy 0.14.2",
  "bevy_mod_raycast",
+ "bevy_panorbit_camera",
  "bevy_rts_camera",
 ]
 

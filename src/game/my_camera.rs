@@ -80,7 +80,13 @@ fn update_rotation(
         // will be one half rotation (180 degrees)
         let delta_x = mouse_delta.x / primary_window.width() * PI;
 
-        cam_trm.rotate_around(Vec3::ZERO, Quat::from_rotation_y(-delta_x));
+        // cam_trm.rotate_around(Vec3::ZERO, Quat::from_rotation_y(-delta_x));
+
+
+        let delta_y = mouse_delta.y / 100.;
+        cam_trm.rotate_around(Vec3::ZERO, Quat::from_axis_angle(Vec3::Y, delta_y));
+
+
     }
 }
 
