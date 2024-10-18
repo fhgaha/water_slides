@@ -3,15 +3,19 @@ mod my_camera;
 use std::f32::consts::{PI, TAU};
 
 use bevy::{
-    color::palettes::css::*, math::VectorSpace, prelude::*, render::{
+    color::palettes::css::*,
+    math::VectorSpace,
+    prelude::*,
+    render::{
         mesh::{Indices, PrimitiveTopology},
         render_asset::RenderAssetUsages,
-    }, window::WindowResolution
+    },
+    window::WindowResolution,
 };
 use bevy_mod_raycast::prelude::*;
+use bevy_panorbit_camera::*;
 use bevy_rts_camera::*;
 use my_camera::MyCameraPlugin;
-use bevy_panorbit_camera::*;
 
 use crate::road_segment::RoadSegmentPlugin;
 
@@ -30,7 +34,7 @@ impl Plugin for GamePlugin {
                     ..default()
                 }),
                 ..default()
-            }), 
+            }),
             // RtsCameraPlugin,
             PanOrbitCameraPlugin,
             RoadSegmentPlugin,
@@ -48,7 +52,7 @@ impl Plugin for GamePlugin {
             (
                 draw_cursor,
                 // check_quad_normals_system
-                draw_gizmos,
+                draw_zero_point_gizmos,
             ),
         );
     }
@@ -83,13 +87,10 @@ fn setup(
             -40.0f32.to_radians(),
             0.0,
         )),
-        ..default() 
+        ..default()
     });
 
-    commands.spawn((
-        Camera3dBundle::default(),
-        PanOrbitCamera::my_setup()
-    ));
+    commands.spawn((Camera3dBundle::default(), PanOrbitCamera::my_setup()));
 }
 
 fn setup_cursor(
@@ -216,7 +217,7 @@ fn check_quad_normals_system(
     }
 }
 
-fn draw_gizmos(mut gizmos: Gizmos) {
+fn draw_zero_point_gizmos(mut gizmos: Gizmos) {
     //zero
     gizmos.arrow(Vec3::ZERO, Vec3::new(1., 0., 0.), RED);
     gizmos.arrow(Vec3::ZERO, Vec3::new(0., 1., 0.), GREEN);
