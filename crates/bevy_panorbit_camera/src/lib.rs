@@ -307,7 +307,7 @@ impl PanOrbitCamera {
             // Adjust sensitivity of controls
             orbit_sensitivity:  1.5,
             pan_sensitivity:    0.5,
-            zoom_sensitivity:   0.5,  
+            zoom_sensitivity:   0.5,
             // Allow the camera to go upside down
             allow_upside_down:  true,
             // Change the controls (these match Blender)
