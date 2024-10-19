@@ -1,4 +1,3 @@
-#![warn(missing_docs)]
 #![doc = include_str!("../README.md")]
 
 use std::f32::consts::{PI, TAU};
@@ -294,7 +293,7 @@ impl PanOrbitCamera {
          PanOrbitCamera {
             focus:              Vec3::new(0.0, 1.0, 0.0),
             // Set the starting position, relative to focus (overrides camera's transform).
-            yaw:                Some(f32::to_radians(0. )),               //Some(TAU / 8.0),
+            yaw:                Some(f32::to_radians(0. )),    //Some(TAU / 8.0),
             pitch:              Some(f32::to_radians(45.)),    //Some(TAU / 8.0),
             radius:             Some(60.0),
             // Set limits on rotation and zoom

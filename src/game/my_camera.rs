@@ -1,3 +1,4 @@
+#![allow(unused_imports)]
 use std::f32::consts::{PI, TAU};
 
 use bevy::{input::mouse::MouseMotion, prelude::*, window::PrimaryWindow};
@@ -20,7 +21,9 @@ impl Plugin for MyCameraPlugin {
 #[derive(Component)]
 pub struct MyCamTacker;
 
-fn setup(mut commands: Commands) {
+fn setup(
+    // mut commands: Commands
+) {
     // commands.spawn((
     //     Camera3dBundle {
     //         transform: Transform::from_xyz(0., 20., 16.).looking_at(Vec3::ZERO, Vec3::Y),
@@ -73,7 +76,7 @@ fn update_rotation(
     mut cam_transforms: Query<&mut Transform, With<MyCamTacker>>,
     mut primary_window_q: Query<&mut Window, With<PrimaryWindow>>,
 ) {
-    let Ok(mut primary_window) = primary_window_q.get_single_mut() else {return;};
+    let Ok(primary_window) = primary_window_q.get_single_mut() else {return;};
 
     let mut cam_trm = cam_transforms.single_mut();
 
@@ -84,7 +87,7 @@ fn update_rotation(
 
         // Adjust based on window size, so that moving mouse entire width of window
         // will be one half rotation (180 degrees)
-        let delta_x = mouse_delta.x / primary_window.width() * PI;
+        let _delta_x = mouse_delta.x / primary_window.width() * PI;
 
         // cam_trm.rotate_around(Vec3::ZERO, Quat::from_rotation_y(-delta_x));
 

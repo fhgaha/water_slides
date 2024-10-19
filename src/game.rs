@@ -1,10 +1,7 @@
 mod my_camera;
 
-use std::f32::consts::{PI, TAU};
-
 use bevy::{
     color::palettes::css::*,
-    math::VectorSpace,
     prelude::*,
     render::{
         mesh::{Indices, PrimitiveTopology},
@@ -15,7 +12,6 @@ use bevy::{
 use bevy_mod_raycast::prelude::*;
 use bevy_panorbit_camera::*;
 use bevy_rts_camera::*;
-use my_camera::MyCameraPlugin;
 
 use crate::road_segment::RoadSegmentPlugin;
 
@@ -23,6 +19,9 @@ pub struct GamePlugin;
 
 #[derive(Component)]
 pub struct Cursor;
+
+#[derive(Component)]
+pub struct ControlPointsPlane;
 
 impl Plugin for GamePlugin {
     fn build(&self, app: &mut App) {
@@ -53,6 +52,7 @@ impl Plugin for GamePlugin {
                 draw_cursor,
                 // check_quad_normals_system
                 draw_zero_point_gizmos,
+                rotate_control_points_plane
             ),
         );
     }
@@ -72,6 +72,16 @@ fn setup(
         },
         // Add `Ground` component to any entity you want the camera to treat as ground.
         Ground,
+    ));
+
+    //transparent plane to move control points on
+    commands.spawn((
+        PbrBundle{
+            mesh: meshes.add(Plane3d::default().mesh().size(90., 90.)),
+            material: materials.add(Color::srgba(0., 0., 1., 0.8)),
+            ..default()
+        },
+        ControlPointsPlane
     ));
 
     // Light
@@ -115,7 +125,7 @@ fn draw_cursor(
     windows: Query<&Window>,
     mut cursors: Query<&mut Transform, With<Cursor>>,
     mut raycast: Raycast,
-    mut gizmos: Gizmos,
+    // mut gizmos: Gizmos,
 ) {
     let (camera, camera_transform) = cameras.single();
     // let ground = ground_q.single();
@@ -163,6 +173,7 @@ fn draw_cursor(
     }
 }
 
+#[allow(dead_code)]
 fn draw_quad(
     mut commands: Commands,
     mut meshes: ResMut<Assets<Mesh>>,
@@ -197,6 +208,7 @@ fn draw_quad(
     });
 }
 
+#[allow(dead_code)]
 fn check_quad_normals_system(
     mut lights: Query<&mut Transform, With<PointLight>>,
     time: Res<Time>,
@@ -222,4 +234,20 @@ fn draw_zero_point_gizmos(mut gizmos: Gizmos) {
     gizmos.arrow(Vec3::ZERO, Vec3::new(1., 0., 0.), RED);
     gizmos.arrow(Vec3::ZERO, Vec3::new(0., 1., 0.), GREEN);
     gizmos.arrow(Vec3::ZERO, Vec3::new(0., 0., 1.), BLUE);
+}
+
+fn rotate_control_points_plane(
+    mut transforms: ParamSet<(
+        Query<&mut Transform, With<ControlPointsPlane>>,
+        Query<&Transform, (With<Camera3d>, With<PanOrbitCamera>)>,
+    )>,
+) {
+    let mut cam_rot= Quat::IDENTITY;
+
+    if let Ok(cam_trm) = transforms.p1().get_single() {
+        cam_rot = cam_trm.rotation;
+    }
+    if let Ok(mut plane_trm) = transforms.p0().get_single_mut() {
+        plane_trm.rotation = cam_rot;
+    }
 }
