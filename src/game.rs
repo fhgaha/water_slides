@@ -1,13 +1,10 @@
 mod my_camera;
 
 use bevy::{
-    color::palettes::css::*,
-    prelude::*,
-    render::{
+    color::palettes::css::*, prelude::*, render::{
         mesh::{Indices, PrimitiveTopology},
         render_asset::RenderAssetUsages,
-    },
-    window::WindowResolution,
+    }, window::WindowResolution
 };
 use bevy_mod_raycast::prelude::*;
 use bevy_panorbit_camera::*;
@@ -74,10 +71,10 @@ fn setup(
         Ground,
     ));
 
-    //transparent plane to move control points on
+    // Transparent plane to move control points on
     commands.spawn((
         PbrBundle{
-            mesh: meshes.add(Plane3d::default().mesh().size(90., 90.)),
+            mesh: meshes.add(Plane3d::default().mesh().size(40., 40.)),
             material: materials.add(Color::srgba(0., 0., 1., 0.8)),
             ..default()
         },
@@ -242,12 +239,17 @@ fn rotate_control_points_plane(
         Query<&Transform, (With<Camera3d>, With<PanOrbitCamera>)>,
     )>,
 ) {
-    let mut cam_rot= Quat::IDENTITY;
+    let mut cam_trm_copy= Transform::default();
 
     if let Ok(cam_trm) = transforms.p1().get_single() {
-        cam_rot = cam_trm.rotation;
+        cam_trm_copy = cam_trm.clone();
+        println!("transl: {}, rot: {}", cam_trm_copy.translation, cam_trm_copy.rotation);
     }
+
     if let Ok(mut plane_trm) = transforms.p0().get_single_mut() {
-        plane_trm.rotation = cam_rot;
+        plane_trm.look_to(
+            -cam_trm_copy.local_y(), 
+            Vec3::Y
+        );
     }
 }
