@@ -1,7 +1,7 @@
 mod my_camera;
 
 use bevy::{
-    color::palettes::css::*, prelude::*, render::{
+    color::palettes::css::*, pbr::NotShadowCaster, prelude::*, render::{
         mesh::{Indices, PrimitiveTopology},
         render_asset::RenderAssetUsages,
     }, window::WindowResolution
@@ -60,11 +60,14 @@ fn setup(
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
 ) {
+
+
     // Ground
     commands.spawn((
         PbrBundle {
             mesh: meshes.add(Plane3d::default().mesh().size(80., 80.)),
             material: materials.add(Color::linear_rgba(0.3, 0.5, 0.0, 0.4)),
+            // visibility: Visibility::Hidden,
             ..default()
         },
         // Add `Ground` component to any entity you want the camera to treat as ground.
@@ -75,9 +78,16 @@ fn setup(
     commands.spawn((
         PbrBundle{
             mesh: meshes.add(Plane3d::default().mesh().size(40., 40.)),
-            material: materials.add(Color::srgba(0., 0., 1., 0.8)),
+            material: materials.add(StandardMaterial{
+                base_color: Color::srgba(0., 0., 1., 0.8),
+                // unlit: true,
+                double_sided: true,
+                ..default()
+            }),
+            // visibility: Visibility::Hidden,
             ..default()
         },
+        NotShadowCaster,
         ControlPointsPlane
     ));
 
@@ -238,18 +248,61 @@ fn rotate_control_points_plane(
         Query<&mut Transform, With<ControlPointsPlane>>,
         Query<&Transform, (With<Camera3d>, With<PanOrbitCamera>)>,
     )>,
+    mut gizmos: Gizmos
 ) {
     let mut cam_trm_copy= Transform::default();
 
     if let Ok(cam_trm) = transforms.p1().get_single() {
         cam_trm_copy = cam_trm.clone();
-        println!("transl: {}, rot: {}", cam_trm_copy.translation, cam_trm_copy.rotation);
     }
 
     if let Ok(mut plane_trm) = transforms.p0().get_single_mut() {
         plane_trm.look_to(
-            -cam_trm_copy.local_y(), 
+            cam_trm_copy.local_y(), 
             Vec3::Y
         );
+        println!("trnsl: {}, rot: {}", plane_trm.translation, plane_trm.rotation);
     }
+
+    //plane gizmos
+    gizmos.primitive_3d(
+        &Plane3d {
+            half_size: Vec2::splat(40.),
+            normal: Dir3::Y,
+        }, 
+        Vec3::ZERO, 
+        cam_trm_copy.rotation, 
+        Color::WHITE
+    );
+
+    gizmos.rect(Vec3::ZERO, cam_trm_copy.rotation, Vec2::splat(40.), Color::WHITE);
 }
+
+
+// I made a billboard in bevy. its just a plane whos y axis is pointed toward camera. like that
+
+// fn rotate_control_points_plane(
+//     mut transforms: ParamSet<(
+//         Query<&mut Transform, With<ControlPointsPlane>>,
+//         Query<&Transform, (With<Camera3d>, With<PanOrbitCamera>)>,
+//     )>,
+// ) {
+//     let mut cam_trm_copy= Transform::default();
+
+//     if let Ok(cam_trm) = transforms.p1().get_single() {
+//         cam_trm_copy = cam_trm.clone();
+//     }
+
+//     if let Ok(mut plane_trm) = transforms.p0().get_single_mut() {
+//         plane_trm.look_to(
+//             -cam_trm_copy.local_y(), 
+//             Vec3::Y
+//         );
+//         println!("trnsl: {}, rot: {}", plane_trm.translation, plane_trm.rotation);
+//     }
+// }
+
+// The issue is when cam goes below zero the plane becomes invisible. heres print line when slightly above ground 
+// trnsl: [0, 0, 0], rot: [0.27547032, 0.68698496, 0.59142166, -0.3199815]
+// and heres slightly below
+// trnsl: [0, 0, 0], rot: [-0.55093604, 0.34622616, 0.26856068, 0.71026206]
