@@ -124,9 +124,12 @@ fn setup_cursor(
     ));
 }
 
+// should clip control plane to the control point. along axis away from camera.
+// then move the control point along the plane.
+
 fn draw_cursor(
     cameras: Query<(&Camera, &GlobalTransform)>,
-    ground_transforms: Query<&GlobalTransform, With<Ground>>,
+    control_points_planes: Query<&GlobalTransform, With<ControlPointsPlane>>,
     windows: Query<&Window>,
     mut cursors: Query<&mut Transform, With<Cursor>>,
     mut raycast: Raycast,
@@ -143,7 +146,7 @@ fn draw_cursor(
     let intersections = raycast.cast_ray(
         ray,
         &RaycastSettings {
-            filter: &|e| ground_transforms.contains(e),
+            filter: &|e| control_points_planes.contains(e),
             ..default()
         },
         // &mut gizmos,
@@ -234,11 +237,17 @@ fn check_quad_normals_system(
     }
 }
 
-fn draw_zero_point_gizmos(mut gizmos: Gizmos) {
+fn draw_zero_point_gizmos(mut gizmos: Gizmos, windows: Query<&Window>) {
+    let Ok(window) = windows.get_single() else {return;};
+
+    let length = window.physical_height() as f32;
+
+    println!("{length:?}");
+
     //zero
-    gizmos.arrow(Vec3::ZERO, Vec3::new(1., 0., 0.), RED);
-    gizmos.arrow(Vec3::ZERO, Vec3::new(0., 1., 0.), GREEN);
-    gizmos.arrow(Vec3::ZERO, Vec3::new(0., 0., 1.), BLUE);
+    gizmos.arrow(Vec3::ZERO, Vec3::X * length, RED);
+    gizmos.arrow(Vec3::ZERO, Vec3::Y * length, GREEN);
+    gizmos.arrow(Vec3::ZERO, Vec3::Z * length, BLUE);
 }
 
 fn rotate_control_points_plane(
@@ -276,7 +285,7 @@ fn rotate_control_points_plane(
     gizmos.rect(Vec3::ZERO, cam_trm_copy.rotation, Vec2::splat(40.), Color::WHITE);
 
     // gizmo_plane3d(
-    //     gizmos, 
+    //     &mut gizmos, 
     //     &Plane3d {
     //         half_size: Vec2::splat(40.),
     //         normal: Dir3::Y,
@@ -287,16 +296,17 @@ fn rotate_control_points_plane(
     // );
 }
 
-fn gizmo_plane3d(mut gizmos: Gizmos, plane: &Plane3d, position: Vec3, rotation: Quat, color: Color){
-    gizmos.primitive_3d(
-        plane, 
-        position, 
-        rotation, 
-        color
-    );
+// fn gizmo_plane3d(gizmos: &mut Gizmos, plane: &Plane3d, position: Vec3, rotation: Quat, color: Color){
+//     gizmos.primitive_3d(
+//         plane, 
+//         position, 
+//         rotation, 
+//         color
+//     );
 
-    gizmos.rect(position, rotation, plane.half_size*2., color);
-}
+//     gizmos.rect(position, rotation, plane.half_size*2., color);
+// }
+
 
 
 // I made a billboard in bevy. its just a plane whos y axis is pointed toward camera. like that
