@@ -107,6 +107,12 @@ fn update_states(
     }
 }
 
+//if dragging cp
+//raycast, detect cp
+//clip plane to the cp
+//raycast, detect plane
+//move cp on plane surface
+
 fn update_positions(
     cursors: Query<&Transform, (With<Cursor>, Without<ControlPointDraggable>)>,
     mut ctrl_pts_transforms: Query<(&mut Transform, &ControlPointDraggable)>,

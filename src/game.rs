@@ -1,7 +1,7 @@
 mod my_camera;
 
 use bevy::{
-    color::palettes::css::*, math::VectorSpace, pbr::NotShadowCaster, prelude::*, render::{
+    color::palettes::css::*, pbr::NotShadowCaster, prelude::*, render::{
         mesh::{Indices, PrimitiveTopology},
         render_asset::RenderAssetUsages,
     }, window::WindowResolution
@@ -124,61 +124,55 @@ fn setup_cursor(
     ));
 }
 
-// should clip control plane to the control point. along axis away from camera.
-// then move the control point along the plane.
 
 fn draw_cursor(
     cameras: Query<(&Camera, &GlobalTransform)>,
-    control_points_planes: Query<&GlobalTransform, With<ControlPointsPlane>>,
+    // control_points_planes: Query<&GlobalTransform, With<ControlPointsPlane>>,
     windows: Query<&Window>,
-    mut cursors: Query<&mut Transform, With<Cursor>>,
+    mut cursor_transforms: Query<&mut Transform, With<Cursor>>,
+    // ctrl_pts_transforms: Query<&Transform, With<ControlPointDraggable>>,
+    cursor_interactables: 
+        Query<
+            &Transform, (
+                Or<(
+                    With<Ground>, 
+                    // With<ControlPointDraggable>
+                )>, 
+                Without<Cursor>
+            )
+        >,
     mut raycast: Raycast,
     mut gizmos: Gizmos,
 ) {
     let (camera, camera_transform) = cameras.single();
     // let ground = ground_q.single();
-    let Some(cursor_position) = windows.single().cursor_position() else {
-        return;
-    };
-    let Some(ray) = camera.viewport_to_world(camera_transform, cursor_position) else {
-        return;
-    };
+    let Some(cursor_position) = windows.single().cursor_position() else {return;};
+    let Some(ray) = camera.viewport_to_world(camera_transform, cursor_position) else {return;};
+
+    //raycast to control points plane
     let intersections = raycast.cast_ray(
         ray,
         &RaycastSettings {
-            filter: &|e| control_points_planes.contains(e),
+            // filter: &|e| control_points_planes.contains(e),
+            filter: &|e| cursor_interactables.contains(e),
             ..default()
         },
-        // &mut gizmos,
     );
-    // let intersections = raycast.cast_ray(
-    //     ray,
-    //     &RaycastSettings {
-    //         filter: &|e| ground_q.contains(e),
-    //         ..default()
-    //     },
-    // );
+
     let point: Vec3 = match intersections.len() > 0 {
         true => intersections[0].1.position(),
         false => Vec3::ZERO,
     };
 
-    //Gizmo cirle
-    // gizmos
-    //     .circle(point + ground.up() * 0.01, ground.up(), 0.2, Color::WHITE)
-    //     .resolution(12);
-
-    // println!("pt: {}", point);
+    for mut cursor_trm in cursor_transforms.iter_mut() {
+        cursor_trm.translation = point;
+    }
 
     //Gizmo sphere
     gizmos
         .sphere(point, default(), 1., Color::WHITE)
         .resolution(8);
 
-    //Mesh sphere
-    for mut c in cursors.iter_mut() {
-        c.translation = point;
-    }
 }
 
 #[allow(dead_code)]
@@ -241,8 +235,6 @@ fn draw_zero_point_gizmos(mut gizmos: Gizmos, windows: Query<&Window>) {
     let Ok(window) = windows.get_single() else {return;};
 
     let length = window.physical_height() as f32;
-
-    println!("{length:?}");
 
     //zero
     gizmos.arrow(Vec3::ZERO, Vec3::X * length, RED);
