@@ -1,7 +1,7 @@
 mod my_camera;
 
 use bevy::{
-    color::palettes::css::*, pbr::NotShadowCaster, prelude::*, render::{
+    color::palettes::css::*, math::VectorSpace, pbr::NotShadowCaster, prelude::*, render::{
         mesh::{Indices, PrimitiveTopology},
         render_asset::RenderAssetUsages,
     }, window::WindowResolution
@@ -78,12 +78,9 @@ fn setup(
     commands.spawn((
         PbrBundle{
             mesh: meshes.add(Plane3d::default().mesh().size(40., 40.)),
-            material: materials.add(StandardMaterial{
-                base_color: Color::srgba(0., 0., 1., 0.8),
-                // unlit: true,
-                double_sided: true,
-                ..default()
-            }),
+            material: materials.add(
+                Color::srgba(0., 0., 1., 0.2),
+            ),
             // visibility: Visibility::Hidden,
             ..default()
         },
@@ -120,6 +117,7 @@ fn setup_cursor(
             mesh: meshes.add(Sphere::new(1.)),
             material: materials.add(Color::srgb(1., 1., 1.)),
             transform: Transform::from_xyz(0.0, 0.0, -23.0),
+            visibility: Visibility::Hidden,
             ..default()
         },
         Cursor,
@@ -128,11 +126,11 @@ fn setup_cursor(
 
 fn draw_cursor(
     cameras: Query<(&Camera, &GlobalTransform)>,
-    ground_q: Query<&GlobalTransform, With<Ground>>,
+    ground_transforms: Query<&GlobalTransform, With<Ground>>,
     windows: Query<&Window>,
     mut cursors: Query<&mut Transform, With<Cursor>>,
     mut raycast: Raycast,
-    // mut gizmos: Gizmos,
+    mut gizmos: Gizmos,
 ) {
     let (camera, camera_transform) = cameras.single();
     // let ground = ground_q.single();
@@ -142,37 +140,37 @@ fn draw_cursor(
     let Some(ray) = camera.viewport_to_world(camera_transform, cursor_position) else {
         return;
     };
-    // let intersections = raycast.debug_cast_ray(
+    let intersections = raycast.cast_ray(
+        ray,
+        &RaycastSettings {
+            filter: &|e| ground_transforms.contains(e),
+            ..default()
+        },
+        // &mut gizmos,
+    );
+    // let intersections = raycast.cast_ray(
     //     ray,
     //     &RaycastSettings {
     //         filter: &|e| ground_q.contains(e),
     //         ..default()
     //     },
-    //     &mut gizmos,
     // );
-    let intersections = raycast.cast_ray(
-        ray,
-        &RaycastSettings {
-            filter: &|e| ground_q.contains(e),
-            ..default()
-        },
-    );
     let point: Vec3 = match intersections.len() > 0 {
         true => intersections[0].1.position(),
         false => Vec3::ZERO,
     };
-
-    // println!("{point}");
 
     //Gizmo cirle
     // gizmos
     //     .circle(point + ground.up() * 0.01, ground.up(), 0.2, Color::WHITE)
     //     .resolution(12);
 
+    // println!("pt: {}", point);
+
     //Gizmo sphere
-    // gizmos
-    //     .sphere(point, default(), 1., Color::WHITE)
-    //     .resolution(8);
+    gizmos
+        .sphere(point, default(), 1., Color::WHITE)
+        .resolution(8);
 
     //Mesh sphere
     for mut c in cursors.iter_mut() {
@@ -187,10 +185,10 @@ fn draw_quad(
     mut materials: ResMut<Assets<StandardMaterial>>,
 ) {
     let points = vec![
-        Vec3::new(-1., 1., 0.),
-        Vec3::new(1., 1., 0.),
+        Vec3::new(-1.,  1., 0.),
+        Vec3::new( 1.,  1., 0.),
         Vec3::new(-1., -1., 0.),
-        Vec3::new(1., -1., 0.),
+        Vec3::new( 1., -1., 0.),
     ];
 
     let tri_indices = vec![2, 1, 0, 1, 2, 3];
@@ -261,10 +259,10 @@ fn rotate_control_points_plane(
             cam_trm_copy.local_y(), 
             Vec3::Y
         );
-        println!("trnsl: {}, rot: {}", plane_trm.translation, plane_trm.rotation);
+        // println!("trnsl: {}, rot: {}", plane_trm.translation, plane_trm.rotation);
     }
 
-    //plane gizmos
+    // plane gizmos
     gizmos.primitive_3d(
         &Plane3d {
             half_size: Vec2::splat(40.),
@@ -276,6 +274,28 @@ fn rotate_control_points_plane(
     );
 
     gizmos.rect(Vec3::ZERO, cam_trm_copy.rotation, Vec2::splat(40.), Color::WHITE);
+
+    // gizmo_plane3d(
+    //     gizmos, 
+    //     &Plane3d {
+    //         half_size: Vec2::splat(40.),
+    //         normal: Dir3::Y,
+    //     }, 
+    //     Vec3::ZERO, 
+    //     cam_trm_copy.rotation, 
+    //     Color::WHITE
+    // );
+}
+
+fn gizmo_plane3d(mut gizmos: Gizmos, plane: &Plane3d, position: Vec3, rotation: Quat, color: Color){
+    gizmos.primitive_3d(
+        plane, 
+        position, 
+        rotation, 
+        color
+    );
+
+    gizmos.rect(position, rotation, plane.half_size*2., color);
 }
 
 
