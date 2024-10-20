@@ -1,7 +1,7 @@
 use bevy::prelude::*;
 use bevy_mod_raycast::prelude::*;
 
-use crate::game::Cursor;
+use crate::game::{ControlPointsPlane, Cursor};
 
 pub struct RoadSegmentPlugin;
 
@@ -27,6 +27,7 @@ impl RoadSegmentBundle {
     // }
 }
 
+#[derive(PartialEq)]
 enum ControlPointState {
     None,
     Drag,
@@ -78,16 +79,14 @@ fn update_states(
     windows: Query<&Window>,
     buttons: Res<ButtonInput<MouseButton>>,
     mut raycast: Raycast,
-    mut control_points: Query<&mut ControlPointDraggable>,
+    mut control_points: Query<(&Transform, &mut ControlPointDraggable)>,
+    mut ctrl_pts_plane: Query<&mut Transform, (With<ControlPointsPlane>, Without<Cursor>, Without<ControlPointDraggable>)>
 ) {
     let (camera, camera_transform) = cameras.single();
 
-    let Some(cursor_position) = windows.single().cursor_position() else {
-        return;
-    };
-    let Some(ray) = camera.viewport_to_world(camera_transform, cursor_position) else {
-        return;
-    };
+    let Some(cursor_position) = windows.single().cursor_position() else {return; };
+    let Some(ray) = camera.viewport_to_world(camera_transform, cursor_position) else {return;};
+    let Ok(mut ctrl_pts_plane_trm) = ctrl_pts_plane.get_single_mut() else {return;};
 
     let intersections = raycast.cast_ray(
         ray,
@@ -96,9 +95,15 @@ fn update_states(
             ..default()
         },
     );
+    
     if intersections.len() > 0 {
-        if let Ok(mut ctrl_pt) = control_points.get_mut(intersections[0].0) {
-            ctrl_pt.state = if buttons.pressed(MouseButton::Left) {
+        if let Ok((ctrl_pt_trm, mut ctrl_pt_draggable)) = 
+        control_points.get_mut(intersections[0].0) {
+            ctrl_pt_draggable.state = if buttons.pressed(MouseButton::Left) {
+                if ctrl_pt_draggable.state == ControlPointState::None {
+                    ctrl_pts_plane_trm.translation = 
+                        Vec3::new(ctrl_pt_trm.translation.x, 0., ctrl_pt_trm.translation.z);
+                }
                 ControlPointState::Drag
             } else {
                 ControlPointState::None
