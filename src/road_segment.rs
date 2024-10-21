@@ -1,4 +1,6 @@
-use bevy::prelude::*;
+use std::any::Any;
+
+use bevy::{ecs::{component::ComponentIdFor, observer::TriggerTargets}, log::tracing_subscriber::filter::combinator::And, prelude::*};
 use bevy_mod_raycast::prelude::*;
 
 use crate::game::{ControlPointsPlane, Cursor};
@@ -83,9 +85,9 @@ fn update_states(
     mut ctrl_pts_plane: Query<&mut Transform, (With<ControlPointsPlane>, Without<Cursor>, Without<ControlPointDraggable>)>
 ) {
     let (camera, camera_transform) = cameras.single();
-
     let Some(cursor_position) = windows.single().cursor_position() else {return; };
     let Some(ray) = camera.viewport_to_world(camera_transform, cursor_position) else {return;};
+    
     let Ok(mut ctrl_pts_plane_trm) = ctrl_pts_plane.get_single_mut() else {return;};
 
     let intersections = raycast.cast_ray(
@@ -97,12 +99,11 @@ fn update_states(
     );
     
     if intersections.len() > 0 {
-        if let Ok((ctrl_pt_trm, mut ctrl_pt_draggable)) = 
-        control_points.get_mut(intersections[0].0) {
+        if let Ok((ctrl_pt_trm, mut ctrl_pt_draggable)) 
+        = control_points.get_mut(intersections[0].0) {
             ctrl_pt_draggable.state = if buttons.pressed(MouseButton::Left) {
                 if ctrl_pt_draggable.state == ControlPointState::None {
-                    ctrl_pts_plane_trm.translation = 
-                        Vec3::new(ctrl_pt_trm.translation.x, 0., ctrl_pt_trm.translation.z);
+                    ctrl_pts_plane_trm.translation = ctrl_pt_trm.translation;
                 }
                 ControlPointState::Drag
             } else {
@@ -119,14 +120,42 @@ fn update_states(
 //move cp on plane surface
 
 fn update_positions(
-    cursors: Query<&Transform, (With<Cursor>, Without<ControlPointDraggable>)>,
-    mut ctrl_pts_transforms: Query<(&mut Transform, &ControlPointDraggable)>,
+    cameras: Query<(&Camera, &GlobalTransform)>,
+    windows: Query<&Window>,
+    mut cursors: Query<&mut Transform, (With<Cursor>, Without<ControlPointDraggable>)>,
+    planes: Query<(&ControlPointsPlane, &Transform), Without<Cursor>>,
+    mut ctrl_pts_transforms: Query<
+        (&mut Transform, &ControlPointDraggable), 
+        Without<ControlPointsPlane>,
+    >,
+    mut raycast: Raycast,
 ) {
-    let Ok(cursor) = cursors.get_single() else {return;};
+    let Ok(mut cursor) = cursors.get_single_mut() else {return;};
 
-    for (mut t, ctrl_pt) in ctrl_pts_transforms.iter_mut() {
-        if let ControlPointState::Drag = ctrl_pt.state {
-            t.translation = cursor.translation
+    for (mut ctrl_pt_trm, ctrl_pt_cmp) in ctrl_pts_transforms.iter_mut() {
+        if let ControlPointState::Drag = ctrl_pt_cmp.state {
+            //make cursor move on plane if dragging
+
+            let (camera, camera_transform) = cameras.single();
+            let Some(cursor_position) = windows.single().cursor_position() else {return; };
+            let Some(ray) = camera.viewport_to_world(camera_transform, cursor_position) else {return;};
+
+            let Ok((plane_cmp, plane_trm)) = planes.get_single() else {return;};
+
+            let intersections = raycast.cast_ray(
+                ray,
+                &RaycastSettings {
+                    filter: &|e| planes.contains(e),
+                    ..default()
+                },
+            );
+
+            if intersections.len() > 0 {
+                //changing cursor position again? this is stupid. should check if ctrl pt draggable maybe?
+                cursor.translation = intersections[0].1.position();
+                ctrl_pt_trm.translation = cursor.translation
+            }
+
         }
     }
 }
