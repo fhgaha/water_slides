@@ -21,7 +21,7 @@ impl Plugin for RoadSegmentPlugin {
 
 #[derive(Component)]
 struct RoadSegment {
-    curve: CubicCurve<Vec3>,
+    curve: CubicBezier<Vec3>,
 }
 
 
@@ -55,9 +55,9 @@ fn setup(
     commands
         .spawn(
             (
-                TransformBundle::default(),
+                SpatialBundle::default(),
                 RoadSegment {
-                    curve: CubicBezier::new([positions]).to_curve(),
+                    curve: CubicBezier::new([positions]),
                 }
             )
         ).with_children(|parent| {
@@ -180,11 +180,12 @@ fn draw_spline(
 }
 
 fn draw_spline_using_road_segment(
-    mut road_segment_query: Query<(Entity, &Children), With<RoadSegment>>,
+    mut road_segment_query: Query<(Entity, &Children, &mut RoadSegment)>,
+    // mut rs_query: Query<&RoadSegment>,
     mut control_point_query: Query<&mut Transform, With<ControlPointDraggable>>,
     mut gizmos: Gizmos,
 ) {
-    for (road_segm_entity, children) in &mut road_segment_query {
+    for (road_segm_entity, children, mut rs) in &mut road_segment_query {
         let mut positions: [[Vec3; 4]; 1] = [[Vec3::INFINITY, Vec3::INFINITY, Vec3::INFINITY, Vec3::INFINITY]]; 
 
         for (i, child) in children.iter().enumerate(){
@@ -195,11 +196,18 @@ fn draw_spline_using_road_segment(
 
         if positions[0].iter().all(|&pos| pos == Vec3::INFINITY) {return};
 
-        gizmos.linestrip(
-            CubicBezier::new(positions)
+        let curve = CubicBezier::new(positions);
+
+        rs.curve = curve;
+
+        let curve_pts = rs.curve
                 .to_curve()
                 .iter_positions(100)
-                .collect::<Vec<Vec3>>(), 
+                .collect::<Vec<Vec3>>();
+
+
+        gizmos.linestrip(
+            curve_pts, 
             Color::WHITE
         );
     }
