@@ -13,7 +13,8 @@ impl Plugin for RoadSegmentPlugin {
             (
                 (update_states, update_positions).chain(), 
                 // draw_spline
-                 draw_spline_using_road_segment
+                 draw_curve_using_road_segment,
+                 sphere_along_curve_move_with_time
             ),
         );
     }
@@ -39,6 +40,9 @@ struct ControlPointDraggable {
 #[derive(Component)]
 #[allow(dead_code)]
 struct Curve(CubicCurve<Vec3>);
+
+#[derive(Component)]
+struct MovingSphere;
 
 fn setup(
     mut commands: Commands,
@@ -76,6 +80,15 @@ fn setup(
                 ));
             }
         });
+
+    //moving sphere
+    commands.spawn((PbrBundle{
+        mesh: meshes.add(Sphere::new(1.0)),
+        material: materials.add(Color::srgba(1., 0., 0., 0.5)),
+        transform: Transform::from_translation(positions[0]),
+        ..default()
+    },
+    MovingSphere));
 }
 
 fn update_states(
@@ -162,6 +175,7 @@ fn update_positions(
     }
 }
 
+#[allow(dead_code)]
 fn draw_spline(
     control_points_transforms: Query<&Transform, With<ControlPointDraggable>>,
     mut gizmos: Gizmos,
@@ -179,36 +193,48 @@ fn draw_spline(
     }
 }
 
-fn draw_spline_using_road_segment(
+fn draw_curve_using_road_segment(
     mut road_segment_query: Query<(Entity, &Children, &mut RoadSegment)>,
     // mut rs_query: Query<&RoadSegment>,
     mut control_point_query: Query<&mut Transform, With<ControlPointDraggable>>,
     mut gizmos: Gizmos,
 ) {
-    for (road_segm_entity, children, mut rs) in &mut road_segment_query {
+    for (_, children, mut rs) in &mut road_segment_query {
         let mut positions: [[Vec3; 4]; 1] = [[Vec3::INFINITY, Vec3::INFINITY, Vec3::INFINITY, Vec3::INFINITY]]; 
 
         for (i, child) in children.iter().enumerate(){
-            if let Ok(mut transform) = control_point_query.get_mut(*child) {
+            if let Ok(transform) = control_point_query.get_mut(*child) {
                 positions[0][i] = transform.translation;
             }
         }
 
         if positions[0].iter().all(|&pos| pos == Vec3::INFINITY) {return};
 
-        let curve = CubicBezier::new(positions);
-
-        rs.curve = curve;
+        rs.curve = CubicBezier::new(positions);
 
         let curve_pts = rs.curve
-                .to_curve()
-                .iter_positions(100)
-                .collect::<Vec<Vec3>>();
-
+            .to_curve()
+            .iter_positions(100)
+            .collect::<Vec<Vec3>>();
 
         gizmos.linestrip(
             curve_pts, 
             Color::WHITE
         );
+    }
+}
+
+fn sphere_along_curve_move_with_time(
+    time: Res<Time>, 
+    road_segments: Query<&RoadSegment>,
+    mut moving_spheres: Query<&mut Transform, With<MovingSphere>>,
+){
+    let t = (time.elapsed_seconds().sin() + 1.) / 2.;
+
+    for rs in road_segments.iter() {
+        let pos = rs.curve.to_curve().position(t);
+        for mut s in moving_spheres.iter_mut() {
+            s.translation = pos;
+        }
     }
 }

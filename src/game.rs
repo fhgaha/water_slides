@@ -247,10 +247,10 @@ fn rotate_control_points_plane(
         Query<&mut Transform, With<ControlPointsPlane>>,            //plane trm
         Query<&Transform, (With<Camera3d>, With<PanOrbitCamera>)>,  //cam trm
     )>,
-    mut gizmos: Gizmos,
+    // mut gizmos: Gizmos,
 ) { 
-    let plane_pos = Vec3::ZERO;
-    let plane_size = Vec2::splat(40.);
+    let _plane_pos = Vec3::ZERO;
+    let _plane_size = Vec2::splat(40.);
 
     let mut temp_trm= Transform::default();
 
