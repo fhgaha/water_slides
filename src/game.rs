@@ -244,87 +244,37 @@ fn draw_zero_point_gizmos(mut gizmos: Gizmos, windows: Query<&Window>) {
 
 fn rotate_control_points_plane(
     mut transforms: ParamSet<(
-        Query<&mut Transform, With<ControlPointsPlane>>,
-        Query<&Transform, (With<Camera3d>, With<PanOrbitCamera>)>,
+        Query<&mut Transform, With<ControlPointsPlane>>,            //plane trm
+        Query<&Transform, (With<Camera3d>, With<PanOrbitCamera>)>,  //cam trm
     )>,
-    mut gizmos: Gizmos
-) {
-    let mut cam_trm_copy= Transform::default();
+    mut gizmos: Gizmos,
+) { 
+    let plane_pos = Vec3::ZERO;
+    let plane_size = Vec2::splat(40.);
+
+    let mut temp_trm= Transform::default();
 
     if let Ok(cam_trm) = transforms.p1().get_single() {
-        cam_trm_copy = cam_trm.clone();
+        temp_trm = cam_trm.clone();
     }
 
     if let Ok(mut plane_trm) = transforms.p0().get_single_mut() {
         plane_trm.look_to(
-            cam_trm_copy.local_y(), 
+            temp_trm.local_y(), 
             Vec3::Y
         );
-        // println!("trnsl: {}, rot: {}", plane_trm.translation, plane_trm.rotation);
     }
 
+    //doesnt work
     // plane gizmos
-    gizmos.primitive_3d(
-        &Plane3d {
-            half_size: Vec2::splat(40.),
-            normal: Dir3::Y,
-        }, 
-        Vec3::ZERO, 
-        cam_trm_copy.rotation, 
-        Color::WHITE
-    );
-
-    gizmos.rect(Vec3::ZERO, cam_trm_copy.rotation, Vec2::splat(40.), Color::WHITE);
-
-    // gizmo_plane3d(
-    //     &mut gizmos, 
+    // gizmos.primitive_3d(
     //     &Plane3d {
-    //         half_size: Vec2::splat(40.),
-    //         normal: Dir3::Y,
+    //         half_size: plane_size,
+    //         ..default()
     //     }, 
-    //     Vec3::ZERO, 
-    //     cam_trm_copy.rotation, 
+    //     temp_trm.translation, 
+    //     temp_trm.rotation, 
     //     Color::WHITE
     // );
+    // gizmos.rect(temp_trm.translation, temp_trm.rotation, plane_size, Color::WHITE);
 }
-
-// fn gizmo_plane3d(gizmos: &mut Gizmos, plane: &Plane3d, position: Vec3, rotation: Quat, color: Color){
-//     gizmos.primitive_3d(
-//         plane, 
-//         position, 
-//         rotation, 
-//         color
-//     );
-
-//     gizmos.rect(position, rotation, plane.half_size*2., color);
-// }
-
-
-
-// I made a billboard in bevy. its just a plane whos y axis is pointed toward camera. like that
-
-// fn rotate_control_points_plane(
-//     mut transforms: ParamSet<(
-//         Query<&mut Transform, With<ControlPointsPlane>>,
-//         Query<&Transform, (With<Camera3d>, With<PanOrbitCamera>)>,
-//     )>,
-// ) {
-//     let mut cam_trm_copy= Transform::default();
-
-//     if let Ok(cam_trm) = transforms.p1().get_single() {
-//         cam_trm_copy = cam_trm.clone();
-//     }
-
-//     if let Ok(mut plane_trm) = transforms.p0().get_single_mut() {
-//         plane_trm.look_to(
-//             -cam_trm_copy.local_y(), 
-//             Vec3::Y
-//         );
-//         println!("trnsl: {}, rot: {}", plane_trm.translation, plane_trm.rotation);
-//     }
-// }
-
-// The issue is when cam goes below zero the plane becomes invisible. heres print line when slightly above ground 
-// trnsl: [0, 0, 0], rot: [0.27547032, 0.68698496, 0.59142166, -0.3199815]
-// and heres slightly below
-// trnsl: [0, 0, 0], rot: [-0.55093604, 0.34622616, 0.26856068, 0.71026206]

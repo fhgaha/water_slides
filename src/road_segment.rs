@@ -1,6 +1,4 @@
-use std::any::Any;
-
-use bevy::{ecs::{component::ComponentIdFor, observer::TriggerTargets}, log::tracing_subscriber::filter::combinator::And, prelude::*};
+use bevy::prelude::*;
 use bevy_mod_raycast::prelude::*;
 
 use crate::game::{ControlPointsPlane, Cursor};
@@ -12,22 +10,20 @@ impl Plugin for RoadSegmentPlugin {
         app.add_systems(Startup, setup);
         app.add_systems(
             Update,
-            ((update_states, update_positions).chain(), draw_spline),
+            (
+                (update_states, update_positions).chain(), 
+                // draw_spline
+                 draw_spline_using_road_segment
+            ),
         );
     }
 }
 
-#[derive(Bundle, Default)]
-struct RoadSegmentBundle {
-    transform: Transform,
+#[derive(Component)]
+struct RoadSegment {
+    curve: CubicCurve<Vec3>,
 }
 
-impl RoadSegmentBundle {
-    // pub fn get_pos(&self, i: usize) -> Vec3 {
-    //     // self.control_points[i]
-    //     [self.p0, self.p1, self.p2, self.p3][i].translation
-    // }
-}
 
 #[derive(PartialEq)]
 enum ControlPointState {
@@ -56,24 +52,30 @@ fn setup(
         Vec3::new( 10., 0.,  10.),
     ];
 
-    for p in positions {
-        commands.spawn((
-            PbrBundle {
-                mesh: meshes.add(Sphere::new(1.)),
-                material: materials.add(Color::srgb(1., 1., 1.)),
-                transform: Transform::from_xyz(p.x, p.y, p.z),
-                ..default()
-            },
-            ControlPointDraggable {
-                state: ControlPointState::None,
-            },
-        ));
-    }
-
-    //curve
-    commands.spawn(
-        Curve(CubicBezier::new([positions]).to_curve())
-    );
+    commands
+        .spawn(
+            (
+                TransformBundle::default(),
+                RoadSegment {
+                    curve: CubicBezier::new([positions]).to_curve(),
+                }
+            )
+        ).with_children(|parent| {
+            for p in positions {
+                parent.spawn((
+                    PbrBundle {
+                        mesh: meshes.add(Sphere::new(1.)),
+                        material: materials.add(Color::srgb(1., 1., 1.)),
+                        // transform: Transform::from_xyz(p.x, p.y, p.z),
+                        transform: Transform::from_translation(p),
+                        ..default()
+                    },
+                    ControlPointDraggable {
+                        state: ControlPointState::None,
+                    },
+                ));
+            }
+        });
 }
 
 fn update_states(
@@ -82,7 +84,10 @@ fn update_states(
     buttons: Res<ButtonInput<MouseButton>>,
     mut raycast: Raycast,
     mut control_points: Query<(&Transform, &mut ControlPointDraggable)>,
-    mut ctrl_pts_plane: Query<&mut Transform, (With<ControlPointsPlane>, Without<Cursor>, Without<ControlPointDraggable>)>
+    mut ctrl_pts_plane: Query<
+        &mut Transform, 
+        (With<ControlPointsPlane>, Without<Cursor>, Without<ControlPointDraggable>)
+    >
 ) {
     let (camera, camera_transform) = cameras.single();
     let Some(cursor_position) = windows.single().cursor_position() else {return; };
@@ -122,16 +127,14 @@ fn update_states(
 fn update_positions(
     cameras: Query<(&Camera, &GlobalTransform)>,
     windows: Query<&Window>,
+    mut raycast: Raycast,
     mut cursors: Query<&mut Transform, (With<Cursor>, Without<ControlPointDraggable>)>,
     planes: Query<(&ControlPointsPlane, &Transform), Without<Cursor>>,
     mut ctrl_pts_transforms: Query<
         (&mut Transform, &ControlPointDraggable), 
         Without<ControlPointsPlane>,
     >,
-    mut raycast: Raycast,
 ) {
-    let Ok(mut cursor) = cursors.get_single_mut() else {return;};
-
     for (mut ctrl_pt_trm, ctrl_pt_cmp) in ctrl_pts_transforms.iter_mut() {
         if let ControlPointState::Drag = ctrl_pt_cmp.state {
             //make cursor move on plane if dragging
@@ -139,9 +142,9 @@ fn update_positions(
             let (camera, camera_transform) = cameras.single();
             let Some(cursor_position) = windows.single().cursor_position() else {return; };
             let Some(ray) = camera.viewport_to_world(camera_transform, cursor_position) else {return;};
-
-            let Ok((plane_cmp, plane_trm)) = planes.get_single() else {return;};
-
+            
+            let Ok(mut cursor) = cursors.get_single_mut() else {return;};
+            
             let intersections = raycast.cast_ray(
                 ray,
                 &RaycastSettings {
@@ -155,7 +158,6 @@ fn update_positions(
                 cursor.translation = intersections[0].1.position();
                 ctrl_pt_trm.translation = cursor.translation
             }
-
         }
     }
 }
@@ -174,5 +176,31 @@ fn draw_spline(
         let curve_pts: Vec<_> = curve.iter_positions(100).collect();
 
         gizmos.linestrip(curve_pts, Color::WHITE);
+    }
+}
+
+fn draw_spline_using_road_segment(
+    mut road_segment_query: Query<(Entity, &Children), With<RoadSegment>>,
+    mut control_point_query: Query<&mut Transform, With<ControlPointDraggable>>,
+    mut gizmos: Gizmos,
+) {
+    for (road_segm_entity, children) in &mut road_segment_query {
+        let mut positions: [[Vec3; 4]; 1] = [[Vec3::INFINITY, Vec3::INFINITY, Vec3::INFINITY, Vec3::INFINITY]]; 
+
+        for (i, child) in children.iter().enumerate(){
+            if let Ok(mut transform) = control_point_query.get_mut(*child) {
+                positions[0][i] = transform.translation;
+            }
+        }
+
+        if positions[0].iter().all(|&pos| pos == Vec3::INFINITY) {return};
+
+        gizmos.linestrip(
+            CubicBezier::new(positions)
+                .to_curve()
+                .iter_positions(100)
+                .collect::<Vec<Vec3>>(), 
+            Color::WHITE
+        );
     }
 }
