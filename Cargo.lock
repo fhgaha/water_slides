@@ -812,6 +812,34 @@ dependencies = [
 ]
 
 [[package]]
+name = "bevy_dev_tools"
+version = "0.14.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0abf99960653c5b0827c562e75fd7a6c74ffa517d2c138519c31375f17f12ce8"
+dependencies = [
+ "bevy_app 0.14.2",
+ "bevy_asset 0.14.2",
+ "bevy_color",
+ "bevy_core 0.14.2",
+ "bevy_core_pipeline 0.14.2",
+ "bevy_diagnostic 0.14.2",
+ "bevy_ecs 0.14.2",
+ "bevy_gizmos 0.14.2",
+ "bevy_hierarchy 0.14.2",
+ "bevy_input 0.14.2",
+ "bevy_math 0.14.2",
+ "bevy_reflect 0.14.2",
+ "bevy_render 0.14.2",
+ "bevy_state",
+ "bevy_text 0.14.2",
+ "bevy_time 0.14.2",
+ "bevy_transform 0.14.2",
+ "bevy_ui 0.14.2",
+ "bevy_utils 0.14.2",
+ "bevy_window 0.14.2",
+]
+
+[[package]]
 name = "bevy_diagnostic"
 version = "0.13.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1210,6 +1238,7 @@ dependencies = [
  "bevy_core 0.14.2",
  "bevy_core_pipeline 0.14.2",
  "bevy_derive 0.14.2",
+ "bevy_dev_tools",
  "bevy_diagnostic 0.14.2",
  "bevy_ecs 0.14.2",
  "bevy_gilrs 0.14.2",

@@ -4,9 +4,9 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-bevy = { version = "0.14.2", features = ["dynamic_linking"] }
+bevy = { version = "0.14.2", features = ["dynamic_linking", "bevy_dev_tools"] }
 bevy_mod_raycast = "0.18.0"
-belly = { path = "crates/belly" }
+belly = { path = "crates/belly" }	#not updated to bevy 0.14
 bevy_rts_camera = { path = "crates/bevy_rts_camera" }
 bevy_panorbit_camera = {path = "crates/bevy_panorbit_camera"}
 

@@ -11,11 +11,12 @@ impl Plugin for RoadSegmentPlugin {
         app.add_systems(
             Update,
             (
+                // update_road_segment_pts,
                 (update_states, update_positions).chain(), 
                 // draw_spline
-                 draw_curve_using_road_segment,
-                 sphere_along_curve_move_with_time
-            ),
+                draw_curve_using_road_segment,
+                sphere_along_curve_move_with_time
+            )
         );
     }
 }
@@ -25,6 +26,13 @@ struct RoadSegment {
     curve: CubicBezier<Vec3>,
 }
 
+impl Default for RoadSegment {
+    fn default() -> Self {
+        Self{
+            curve: CubicBezier::new([[Vec3::INFINITY, Vec3::INFINITY, Vec3::INFINITY, Vec3::INFINITY]])
+        }
+    }
+}
 
 #[derive(PartialEq)]
 enum ControlPointState {
@@ -90,6 +98,23 @@ fn setup(
     },
     MovingSphere));
 }
+
+// fn update_road_segment_pts(
+//     mut query: Query<(&mut RoadSegment, &Children)>,
+//     transforms: Query<&Transform>,
+// ) {
+//     for (mut road_segment, children) in query.iter_mut() {
+//         for (i, child) in children.iter().enumerate() {
+//             if let Ok(transform) = transforms.get(*child) {
+
+//             }
+//         }
+//     }
+// }
+
+
+
+
 
 fn update_states(
     cameras: Query<(&Camera, &GlobalTransform)>,
