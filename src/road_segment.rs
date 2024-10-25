@@ -36,6 +36,24 @@ impl Default for RoadSegment {
     }
 }
 
+impl RoadSegment {
+    fn curve_pts(&mut self, transforms: &Query<&Transform>, subdivisions: usize) -> Vec<Vec3> {
+        let positions: [Vec3; 4] = self.pts
+            .iter()
+            .map(|pt| transforms.get(*pt).unwrap().translation)
+            .collect::<Vec<_>>()
+            .try_into()
+            .unwrap();
+
+        self.curve = CubicBezier::new([positions]);
+
+        self.curve
+            .to_curve()
+            .iter_positions(subdivisions)
+            .collect::<Vec<Vec3>>()
+    }
+}
+
 #[derive(PartialEq)]
 enum ControlPointState {
     None,
@@ -209,24 +227,8 @@ fn draw_curve_using_road_segment(
     mut gizmos: Gizmos,
 ) {
     for mut rs in road_segments.iter_mut() {
-        
-        //do this in road segment method
-        let positions: [Vec3; 4] = rs.pts
-            .iter()
-            .map(|pt| transforms.get(*pt).unwrap().translation)
-            .collect::<Vec<_>>()
-            .try_into()
-            .unwrap();
-
-        rs.curve = CubicBezier::new([positions]);
-
-        let curve_pts = rs.curve
-            .to_curve()
-            .iter_positions(100)
-            .collect::<Vec<Vec3>>();
-
         gizmos.linestrip(
-            curve_pts, 
+            rs.curve_pts(&transforms, 100), 
             Color::WHITE
         );
     }
