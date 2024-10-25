@@ -24,12 +24,14 @@ impl Plugin for RoadSegmentPlugin {
 #[derive(Component)]
 struct RoadSegment {
     curve: CubicBezier<Vec3>,
+    pts: [Entity; 4]
 }
 
 impl Default for RoadSegment {
     fn default() -> Self {
         Self{
-            curve: CubicBezier::new([[Vec3::INFINITY, Vec3::INFINITY, Vec3::INFINITY, Vec3::INFINITY]])
+            curve: CubicBezier::new([[Vec3::INFINITY, Vec3::INFINITY, Vec3::INFINITY, Vec3::INFINITY]]),
+            pts: [Entity::from_bits(0); 4]
         }
     }
 }
@@ -64,30 +66,30 @@ fn setup(
         Vec3::new( 10., 0.,  10.),
     ];
 
+    let control_pts_ids: [Entity; 4] = positions.map(|p|{
+        commands.spawn((
+            PbrBundle {
+                mesh: meshes.add(Sphere::new(1.)),
+                material: materials.add(Color::srgb(1., 1., 1.)),
+                transform: Transform::from_translation(p),
+                ..default()
+            },
+            ControlPointDraggable {
+                state: ControlPointState::None,
+            },
+        ))
+        .id()
+    });
+
     commands
-        .spawn(
-            (
+        .spawn((
                 SpatialBundle::default(),
                 RoadSegment {
                     curve: CubicBezier::new([positions]),
+                    pts: control_pts_ids
                 }
-            )
-        ).with_children(|parent| {
-            for p in positions {
-                parent.spawn((
-                    PbrBundle {
-                        mesh: meshes.add(Sphere::new(1.)),
-                        material: materials.add(Color::srgb(1., 1., 1.)),
-                        // transform: Transform::from_xyz(p.x, p.y, p.z),
-                        transform: Transform::from_translation(p),
-                        ..default()
-                    },
-                    ControlPointDraggable {
-                        state: ControlPointState::None,
-                    },
-                ));
-            }
-        });
+        ))
+        .push_children(&control_pts_ids);
 
     //moving sphere
     commands.spawn((PbrBundle{
@@ -98,23 +100,6 @@ fn setup(
     },
     MovingSphere));
 }
-
-// fn update_road_segment_pts(
-//     mut query: Query<(&mut RoadSegment, &Children)>,
-//     transforms: Query<&Transform>,
-// ) {
-//     for (mut road_segment, children) in query.iter_mut() {
-//         for (i, child) in children.iter().enumerate() {
-//             if let Ok(transform) = transforms.get(*child) {
-
-//             }
-//         }
-//     }
-// }
-
-
-
-
 
 fn update_states(
     cameras: Query<(&Camera, &GlobalTransform)>,
@@ -219,23 +204,21 @@ fn draw_spline(
 }
 
 fn draw_curve_using_road_segment(
-    mut road_segment_query: Query<(Entity, &Children, &mut RoadSegment)>,
-    // mut rs_query: Query<&RoadSegment>,
-    mut control_point_query: Query<&mut Transform, With<ControlPointDraggable>>,
+    mut road_segments: Query<&mut RoadSegment>,
+    transforms: Query<&Transform>,    
     mut gizmos: Gizmos,
 ) {
-    for (_, children, mut rs) in &mut road_segment_query {
-        let mut positions: [[Vec3; 4]; 1] = [[Vec3::INFINITY, Vec3::INFINITY, Vec3::INFINITY, Vec3::INFINITY]]; 
+    for mut rs in road_segments.iter_mut() {
+        
+        //do this in road segment method
+        let positions: [Vec3; 4] = rs.pts
+            .iter()
+            .map(|pt| transforms.get(*pt).unwrap().translation)
+            .collect::<Vec<_>>()
+            .try_into()
+            .unwrap();
 
-        for (i, child) in children.iter().enumerate(){
-            if let Ok(transform) = control_point_query.get_mut(*child) {
-                positions[0][i] = transform.translation;
-            }
-        }
-
-        if positions[0].iter().all(|&pos| pos == Vec3::INFINITY) {return};
-
-        rs.curve = CubicBezier::new(positions);
+        rs.curve = CubicBezier::new([positions]);
 
         let curve_pts = rs.curve
             .to_curve()
