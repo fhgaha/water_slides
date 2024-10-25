@@ -84,6 +84,7 @@ fn setup(
         Vec3::new( 10., 0.,  10.),
     ];
 
+    //control points
     let control_pts_ids: [Entity; 4] = positions.map(|p|{
         commands.spawn((
             PbrBundle {
@@ -99,6 +100,7 @@ fn setup(
         .id()
     });
 
+    //road segment
     commands
         .spawn((
                 SpatialBundle::default(),

@@ -9,6 +9,7 @@ use bevy::{
 use bevy_mod_raycast::prelude::*;
 use bevy_panorbit_camera::*;
 use bevy_rts_camera::*;
+use bevy_lunex::prelude::*;
 
 use crate::road_segment::RoadSegmentPlugin;
 
@@ -31,7 +32,8 @@ impl Plugin for GamePlugin {
                 }),
                 ..default()
             }),
-            // RtsCameraPlugin,
+            UiDefaultPlugins,
+            UiDebugPlugin::<MainUi>::new(),
             PanOrbitCameraPlugin,
             RoadSegmentPlugin,
         ))
@@ -59,9 +61,8 @@ fn setup(
     mut commands: Commands,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
+    assets: Res<AssetServer>
 ) {
-
-
     // Ground
     commands.spawn((
         PbrBundle {
@@ -104,7 +105,63 @@ fn setup(
         ..default()
     });
 
-    commands.spawn((Camera3dBundle::default(), PanOrbitCamera::my_setup()));
+    // camera
+    commands.spawn((
+        Camera3dBundle::default(), 
+        PanOrbitCamera::my_setup(),
+        MainUi,
+    ));
+
+    commands
+        .spawn((
+            SourceFromCamera,
+            UiTreeBundle::<MainUi>::from(UiTree::new2d("Hello UI!"))
+        ))
+        .with_children(|ui|{
+            
+            //ui nodes
+            
+            ui.spawn((
+                UiLink::<MainUi>::path("Root"),
+                UiLayout::window_full().pos(Ab(20.)).size(Rl(100.) - Ab(40.)).pack::<Base>(), 
+            ));
+
+            ui.spawn((
+                UiLink::<MainUi>::path("Root/Rectangle"),
+                UiLayout::solid().size(Ab((1920., 1080.))).pack::<Base>(),
+                UiImage2dBundle::from(assets.load("textures/Sample.png")),
+            ));
+        });
+
+    //ui
+    //  commands.spawn((
+    //     Camera3dBundle::default(), 
+    //     PanOrbitCamera::my_setup(),
+    //     MainUi
+    // ))
+    // .with_children(|parent|{
+    //     parent
+    //         .spawn((
+    //             SourceFromCamera,
+    //             UiTreeBundle::<MainUi>::from(UiTree::new2d("Hello UI!"))
+    //         ))
+    //         .with_children(|ui|{
+                
+    //             //ui nodes
+                
+    //             ui.spawn((
+    //                 UiLink::<MainUi>::path("Root"),
+    //                 UiLayout::window_full().pos(Ab(20.)).size(Rl(100.) - Ab(40.)).pack::<Base>(), 
+    //             ));
+
+    //             ui.spawn((
+    //                 UiLink::<MainUi>::path("Root/Rectangle"),
+    //                 UiLayout::solid().size(Ab((1920., 1080.))).pack::<Base>(),
+    //                 UiImage2dBundle::from(assets.load("textures/Sample.png")),
+    //             ));
+    //         });
+
+    // });
 }
 
 fn setup_cursor(
