@@ -24,6 +24,7 @@ impl Plugin for RoadSegmentPlugin {
     }
 }
 
+#[derive(Clone, Copy)]
 struct OrientedPoint {
     pos: Vec3,
     rot: Quat
@@ -35,6 +36,11 @@ impl OrientedPoint {
             pos,
             rot: Quat::from_rotation_arc(Vec3::Z, forward)  //???
         }
+    }
+
+    fn local_to_world(self, local_space_pos: Vec3) -> Vec3 {
+        let world_pos = self.rot * local_space_pos; //should be reversed?
+        self.pos + world_pos
     }
 }
 
@@ -136,13 +142,15 @@ fn setup(
         .push_children(&control_pts_ids);
 
     //moving sphere
-    commands.spawn((PbrBundle{
-        mesh: meshes.add(Sphere::new(1.1)),
-        material: materials.add(Color::srgba(1., 0., 0., 1.)),
-        transform: Transform::from_translation(positions[0]),
-        ..default()
-    },
-    MovingSphere));
+    commands.spawn((
+        PbrBundle{
+            mesh: meshes.add(Sphere::new(0.2)),
+            material: materials.add(Color::srgba(1., 0., 0., 1.)),
+            transform: Transform::from_translation(positions[0]),
+            ..default()
+        },
+        MovingSphere
+    ));
 }
 
 fn update_states(
@@ -290,8 +298,15 @@ fn move_shpere_along_curve(
             sphere.rotation = op.rot;
 
             gizmos.axes(*sphere.deref_mut(), 4.);
+
+            const RED: Srgba = bevy::color::palettes::basic::RED;
+            gizmos.sphere(op.local_to_world(Vec3::X *  1.), op.rot, 0.2, RED).resolution(8);
+            gizmos.sphere(op.local_to_world(Vec3::X *  2.), op.rot, 0.2, RED).resolution(8);
+            gizmos.sphere(op.local_to_world(Vec3::X * -1.), op.rot, 0.2, RED).resolution(8);
+            gizmos.sphere(op.local_to_world(Vec3::X * -2.), op.rot, 0.2, RED).resolution(8);
+            gizmos.sphere(op.local_to_world(Vec3::Y *  1.), op.rot, 0.2, RED).resolution(8);
+            gizmos.sphere(op.local_to_world(Vec3::Y *  2.), op.rot, 0.2, RED).resolution(8);
         }
     }
-
 }
 
