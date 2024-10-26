@@ -8,7 +8,7 @@ impl Plugin for MyUiPlugin {
         app
             .init_resource::<UiState>()
             .add_plugins(EguiPlugin)
-            .add_systems(Update, ui_example_system);
+            .add_systems(Update, read_slider_value);
     }
 }
 
@@ -17,7 +17,7 @@ pub struct UiState {
     pub value: f32,
 }
 
-fn ui_example_system(
+fn read_slider_value(
     mut contexts: EguiContexts,
     mut ui_state: ResMut<UiState>,
 ) {

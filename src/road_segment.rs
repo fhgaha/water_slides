@@ -1,3 +1,5 @@
+use std::ops::DerefMut;
+
 use bevy::prelude::*;
 use bevy_mod_raycast::prelude::*;
 use my_ui::*;
@@ -16,8 +18,7 @@ impl Plugin for RoadSegmentPlugin {
                 (update_states, update_positions).chain(), 
                 // draw_spline
                 draw_curve_using_road_segment,
-                // sphere_along_curve_move_with_time,
-                sphere_along_curve_move_from_ui_input
+                move_shpere_along_curve
             )
         );
     }
@@ -115,8 +116,8 @@ fn setup(
 
     //moving sphere
     commands.spawn((PbrBundle{
-        mesh: meshes.add(Sphere::new(1.0)),
-        material: materials.add(Color::srgba(1., 0., 0., 0.5)),
+        mesh: meshes.add(Sphere::new(1.1)),
+        material: materials.add(Color::srgba(1., 0., 0., 1.)),
         transform: Transform::from_translation(positions[0]),
         ..default()
     },
@@ -238,31 +239,38 @@ fn draw_curve_using_road_segment(
     }
 }
 
-#[allow(dead_code)]
-fn sphere_along_curve_move_with_time(
-    time: Res<Time>, 
-    road_segments: Query<&RoadSegment>,
-    mut moving_spheres: Query<&mut Transform, With<MovingSphere>>,
-){
-    let t = (time.elapsed_seconds().sin() + 1.) / 2.;
+// fn sphere_along_curve_move_with_time(
+//     time: Res<Time>, 
+//     road_segments: Query<&RoadSegment>,
+//     mut moving_spheres: Query<&mut Transform, With<MovingSphere>>,
+// ){
+//     let t = (time.elapsed_seconds().sin() + 1.) / 2.;
+//
+//     for rs in road_segments.iter() {
+//         let pos = rs.curve.to_curve().position(t);
+//         for mut s in moving_spheres.iter_mut() {
+//             s.translation = pos;
+//         }
+//     }
+// }
 
-    for rs in road_segments.iter() {
-        let pos = rs.curve.to_curve().position(t);
-        for mut s in moving_spheres.iter_mut() {
-            s.translation = pos;
-        }
-    }
-}
-
-fn sphere_along_curve_move_from_ui_input(
+fn move_shpere_along_curve(
     ui_state: Res<UiState>,
     road_segments: Query<&RoadSegment>,
     mut moving_spheres: Query<&mut Transform, With<MovingSphere>>,
+    mut gizmos: Gizmos
 ){
     for rs in road_segments.iter() {
+        //CubicCurve
         let pos = rs.curve.to_curve().position(ui_state.value);
-        for mut s in moving_spheres.iter_mut() {
-            s.translation = pos;
+        let vel = rs.curve.to_curve().velocity(ui_state.value).normalize();
+        
+        for mut sphere in moving_spheres.iter_mut() {
+            sphere.translation = pos;
+            sphere.rotation = Quat::from_rotation_arc(Vec3::Z, vel);
+
+            gizmos.axes(*sphere.deref_mut(), 4.);
         }
     }
+
 }
