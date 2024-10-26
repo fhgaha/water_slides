@@ -1,9 +1,10 @@
-use std::ops::DerefMut;
+mod oriented_point;
 
+use std::ops::DerefMut;
 use bevy::prelude::*;
 use bevy_mod_raycast::prelude::*;
 use my_ui::*;
-
+use oriented_point::OrientedPoint;
 use crate::{game::{ControlPointsPlane, Cursor}, my_ui};
 
 pub struct RoadSegmentPlugin;
@@ -21,26 +22,6 @@ impl Plugin for RoadSegmentPlugin {
                 move_shpere_along_curve
             )
         );
-    }
-}
-
-#[derive(Clone, Copy)]
-struct OrientedPoint {
-    pos: Vec3,
-    rot: Quat
-}
-
-impl OrientedPoint {
-    fn from_forward(pos: Vec3, forward: Vec3) -> Self {
-        Self {
-            pos,
-            rot: Quat::from_rotation_arc(Vec3::Z, forward)  //???
-        }
-    }
-
-    fn local_to_world(self, local_space_pos: Vec3) -> Vec3 {
-        let world_pos = self.rot * local_space_pos; //should be reversed?
-        self.pos + world_pos
     }
 }
 
@@ -94,10 +75,6 @@ enum ControlPointState {
 struct ControlPointDraggable {
     pub state: ControlPointState,
 }
-
-#[derive(Component)]
-#[allow(dead_code)]
-struct Curve(CubicCurve<Vec3>);
 
 #[derive(Component)]
 struct MovingSphere;
