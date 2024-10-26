@@ -24,6 +24,20 @@ impl Plugin for RoadSegmentPlugin {
     }
 }
 
+struct OrientedPoint {
+    pos: Vec3,
+    rot: Quat
+}
+
+impl OrientedPoint {
+    fn from_forward(pos: Vec3, forward: Vec3) -> Self {
+        Self {
+            pos,
+            rot: Quat::from_rotation_arc(Vec3::Z, forward)  //???
+        }
+    }
+}
+
 #[derive(Component)]
 struct RoadSegment {
     curve: CubicBezier<Vec3>,
@@ -54,6 +68,13 @@ impl RoadSegment {
             .to_curve()
             .iter_positions(subdivisions)
             .collect::<Vec<Vec3>>()
+    }
+
+    fn get_bezier_oriented_point(&self, t: f32) -> OrientedPoint {
+        OrientedPoint::from_forward(
+            self.curve.to_curve().position(t), 
+            self.curve.to_curve().velocity(t).normalize()
+        )
     }
 }
 
@@ -261,16 +282,16 @@ fn move_shpere_along_curve(
     mut gizmos: Gizmos
 ){
     for rs in road_segments.iter() {
-        //CubicCurve
-        let pos = rs.curve.to_curve().position(ui_state.value);
-        let vel = rs.curve.to_curve().velocity(ui_state.value).normalize();
-        
+        let op = rs.get_bezier_oriented_point(ui_state.value);
+
         for mut sphere in moving_spheres.iter_mut() {
-            sphere.translation = pos;
-            sphere.rotation = Quat::from_rotation_arc(Vec3::Z, vel);
+            sphere.translation = op.pos;
+            //lock Y for this quat when you dont want the thing to rotate around movement direction
+            sphere.rotation = op.rot;
 
             gizmos.axes(*sphere.deref_mut(), 4.);
         }
     }
 
 }
+
