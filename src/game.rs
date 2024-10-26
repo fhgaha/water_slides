@@ -9,8 +9,7 @@ use bevy::{
 use bevy_mod_raycast::prelude::*;
 use bevy_panorbit_camera::*;
 use bevy_rts_camera::*;
-use bevy_egui::*;
-
+use crate::my_ui::MyUiPlugin;
 use crate::road_segment::RoadSegmentPlugin;
 
 pub struct GamePlugin;
@@ -23,47 +22,38 @@ pub struct ControlPointsPlane;
 
 impl Plugin for GamePlugin {
     fn build(&self, app: &mut App) {
-        app.add_plugins((
-            DefaultPlugins.set(WindowPlugin {
-                primary_window: Some(Window {
-                    resolution: WindowResolution::new(800., 600.),
-                    position: WindowPosition::At(IVec2::ZERO),
+        app
+            .add_plugins((
+                DefaultPlugins.set(WindowPlugin {
+                    primary_window: Some(Window {
+                        resolution: WindowResolution::new(800., 600.),
+                        position: WindowPosition::At(IVec2::ZERO),
+                        ..default()
+                    }),
                     ..default()
                 }),
-                ..default()
-            }),
-            EguiPlugin,
-            PanOrbitCameraPlugin,
-            RoadSegmentPlugin,
-        ))
-        .add_systems(
-            Startup,
-            (
-                setup,
-                setup_cursor,
-                //draw_quad
-            ),
-        )
-        .add_systems(
-            Update,
-            (
-                draw_cursor,
-                // check_quad_normals_system
-                draw_zero_point_gizmos,
-                rotate_control_points_plane,
-                ui_example_system
-            ),
-        );
+                PanOrbitCameraPlugin,
+                RoadSegmentPlugin,
+                MyUiPlugin
+            ))
+            .add_systems(
+                Startup,
+                (
+                    setup,
+                    setup_cursor,
+                    //draw_quad
+                ),
+            )
+            .add_systems(
+                Update,
+                (
+                    draw_cursor,
+                    // check_quad_normals_system
+                    draw_zero_point_gizmos,
+                    rotate_control_points_plane,
+                ),
+            );
     }
-}
-
-
-fn ui_example_system(mut contexts: EguiContexts) {
-    egui::Window::new("Hello").show(
-        contexts.ctx_mut(), 
-        |ui| {
-            ui.label("world");
-    });
 }
 
 fn setup(

@@ -1,7 +1,8 @@
 use bevy::prelude::*;
 use bevy_mod_raycast::prelude::*;
+use my_ui::*;
 
-use crate::game::{ControlPointsPlane, Cursor};
+use crate::{game::{ControlPointsPlane, Cursor}, my_ui};
 
 pub struct RoadSegmentPlugin;
 
@@ -15,7 +16,8 @@ impl Plugin for RoadSegmentPlugin {
                 (update_states, update_positions).chain(), 
                 // draw_spline
                 draw_curve_using_road_segment,
-                sphere_along_curve_move_with_time
+                // sphere_along_curve_move_with_time,
+                sphere_along_curve_move_from_ui_input
             )
         );
     }
@@ -236,6 +238,7 @@ fn draw_curve_using_road_segment(
     }
 }
 
+#[allow(dead_code)]
 fn sphere_along_curve_move_with_time(
     time: Res<Time>, 
     road_segments: Query<&RoadSegment>,
@@ -245,6 +248,19 @@ fn sphere_along_curve_move_with_time(
 
     for rs in road_segments.iter() {
         let pos = rs.curve.to_curve().position(t);
+        for mut s in moving_spheres.iter_mut() {
+            s.translation = pos;
+        }
+    }
+}
+
+fn sphere_along_curve_move_from_ui_input(
+    ui_state: Res<UiState>,
+    road_segments: Query<&RoadSegment>,
+    mut moving_spheres: Query<&mut Transform, With<MovingSphere>>,
+){
+    for rs in road_segments.iter() {
+        let pos = rs.curve.to_curve().position(ui_state.value);
         for mut s in moving_spheres.iter_mut() {
             s.translation = pos;
         }
