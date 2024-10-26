@@ -23,7 +23,7 @@ bevy = { version = "0.14.2", default-features = false,  features = [
 	"bevy_render",
 	"bevy_sprite",
 	"bevy_text",
-	# "bevy_ui",
+	"bevy_ui",
 	"multi_threaded",
 	"png",
 	"hdr",
@@ -42,6 +42,7 @@ bevy_lunex = { version = "0.2.4" }
 bevy_rts_camera = { path = "crates/bevy_rts_camera" }
 bevy_panorbit_camera = {path = "crates/bevy_panorbit_camera"}
 bevy_dev_tools = "0.14.2"
+bevy_egui = "0.30.0"
 
 # Enable a small amount of optimization in the dev profile.
 [profile.dev]

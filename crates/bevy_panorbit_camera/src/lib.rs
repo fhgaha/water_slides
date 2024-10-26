@@ -301,7 +301,7 @@ impl PanOrbitCamera {
             yaw_lower_limit:    Some(f32::to_radians(-360.)),  //Some(-TAU / 1.0),
             pitch_upper_limit:  Some(f32::to_radians( 90. )),  //Some( TAU / 4.0),
             pitch_lower_limit:  Some(f32::to_radians(-90. )),  //Some(-TAU / 4.0),
-            zoom_upper_limit:   Some(100.0),
+            zoom_upper_limit:   Some(240.0),
             zoom_lower_limit:   Some(5.0),
             // Adjust sensitivity of controls
             orbit_sensitivity:  1.5,

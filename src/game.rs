@@ -9,7 +9,7 @@ use bevy::{
 use bevy_mod_raycast::prelude::*;
 use bevy_panorbit_camera::*;
 use bevy_rts_camera::*;
-use bevy_lunex::prelude::*;
+use bevy_egui::*;
 
 use crate::road_segment::RoadSegmentPlugin;
 
@@ -32,8 +32,7 @@ impl Plugin for GamePlugin {
                 }),
                 ..default()
             }),
-            UiDefaultPlugins,
-            UiDebugPlugin::<MainUi>::new(),
+            EguiPlugin,
             PanOrbitCameraPlugin,
             RoadSegmentPlugin,
         ))
@@ -51,17 +50,27 @@ impl Plugin for GamePlugin {
                 draw_cursor,
                 // check_quad_normals_system
                 draw_zero_point_gizmos,
-                rotate_control_points_plane
+                rotate_control_points_plane,
+                ui_example_system
             ),
         );
     }
+}
+
+
+fn ui_example_system(mut contexts: EguiContexts) {
+    egui::Window::new("Hello").show(
+        contexts.ctx_mut(), 
+        |ui| {
+            ui.label("world");
+    });
 }
 
 fn setup(
     mut commands: Commands,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
-    assets: Res<AssetServer>
+    _assets: Res<AssetServer>
 ) {
     // Ground
     commands.spawn((
@@ -92,76 +101,25 @@ fn setup(
     // Light
     commands.spawn(DirectionalLightBundle {
         directional_light: DirectionalLight {
-            illuminance: 1000.0,
+            illuminance: 1000.,
             shadows_enabled: true,
             ..default()
         },
         transform: Transform::from_rotation(Quat::from_euler(
             EulerRot::YXZ,
-            150.0f32.to_radians(),
-            -40.0f32.to_radians(),
-            0.0,
+            f32::to_radians(150.),
+            f32::to_radians(-40.),
+            0.,
         )),
         ..default()
     });
 
-    // camera
+    //camera
     commands.spawn((
         Camera3dBundle::default(), 
-        PanOrbitCamera::my_setup(),
-        MainUi,
+        PanOrbitCamera::my_setup()
     ));
 
-    commands
-        .spawn((
-            SourceFromCamera,
-            UiTreeBundle::<MainUi>::from(UiTree::new2d("Hello UI!"))
-        ))
-        .with_children(|ui|{
-            
-            //ui nodes
-            
-            ui.spawn((
-                UiLink::<MainUi>::path("Root"),
-                UiLayout::window_full().pos(Ab(20.)).size(Rl(100.) - Ab(40.)).pack::<Base>(), 
-            ));
-
-            ui.spawn((
-                UiLink::<MainUi>::path("Root/Rectangle"),
-                UiLayout::solid().size(Ab((1920., 1080.))).pack::<Base>(),
-                UiImage2dBundle::from(assets.load("textures/Sample.png")),
-            ));
-        });
-
-    //ui
-    //  commands.spawn((
-    //     Camera3dBundle::default(), 
-    //     PanOrbitCamera::my_setup(),
-    //     MainUi
-    // ))
-    // .with_children(|parent|{
-    //     parent
-    //         .spawn((
-    //             SourceFromCamera,
-    //             UiTreeBundle::<MainUi>::from(UiTree::new2d("Hello UI!"))
-    //         ))
-    //         .with_children(|ui|{
-                
-    //             //ui nodes
-                
-    //             ui.spawn((
-    //                 UiLink::<MainUi>::path("Root"),
-    //                 UiLayout::window_full().pos(Ab(20.)).size(Rl(100.) - Ab(40.)).pack::<Base>(), 
-    //             ));
-
-    //             ui.spawn((
-    //                 UiLink::<MainUi>::path("Root/Rectangle"),
-    //                 UiLayout::solid().size(Ab((1920., 1080.))).pack::<Base>(),
-    //                 UiImage2dBundle::from(assets.load("textures/Sample.png")),
-    //             ));
-    //         });
-
-    // });
 }
 
 fn setup_cursor(
