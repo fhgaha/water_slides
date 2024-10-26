@@ -19,3 +19,4 @@ impl OrientedPoint {
         self.pos + world_pos
     }
 }
+ 
