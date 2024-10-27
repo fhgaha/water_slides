@@ -6,6 +6,7 @@ use bevy::prelude::*;
 use bevy_mod_raycast::prelude::*;
 use my_ui::*;
 use oriented_point::OrientedPoint;
+use mesh_2d::*;
 use crate::{game::{ControlPointsPlane, Cursor}, my_ui};
 
 pub struct RoadSegmentPlugin;
@@ -20,7 +21,8 @@ impl Plugin for RoadSegmentPlugin {
                 (update_states, update_positions).chain(), 
                 // draw_spline
                 draw_curve_using_road_segment,
-                move_shpere_along_curve
+                // move_shpere_along_curve,
+                draw_profile
             )
         );
     }
@@ -246,20 +248,21 @@ fn draw_curve_using_road_segment(
     }
 }
 
-// fn sphere_along_curve_move_with_time(
-//     time: Res<Time>, 
-//     road_segments: Query<&RoadSegment>,
-//     mut moving_spheres: Query<&mut Transform, With<MovingSphere>>,
-// ){
-//     let t = (time.elapsed_seconds().sin() + 1.) / 2.;
-//
-//     for rs in road_segments.iter() {
-//         let pos = rs.curve.to_curve().position(t);
-//         for mut s in moving_spheres.iter_mut() {
-//             s.translation = pos;
-//         }
-//     }
-// }
+#[allow(dead_code)]
+fn sphere_along_curve_move_with_time(
+    time: Res<Time>, 
+    road_segments: Query<&RoadSegment>,
+    mut moving_spheres: Query<&mut Transform, With<MovingSphere>>,
+){
+    let t = (time.elapsed_seconds().sin() + 1.) / 2.;
+
+    for rs in road_segments.iter() {
+        let pos = rs.curve.to_curve().position(t);
+        for mut s in moving_spheres.iter_mut() {
+            s.translation = pos;
+        }
+    }
+}
 
 fn move_shpere_along_curve(
     ui_state: Res<UiState>,
@@ -278,13 +281,40 @@ fn move_shpere_along_curve(
             gizmos.axes(*sphere.deref_mut(), 4.);
 
             const RED: Srgba = bevy::color::palettes::basic::RED;
-            gizmos.sphere(op.local_to_world(Vec3::X *  1.), op.rot, 0.2, RED).resolution(8);
-            gizmos.sphere(op.local_to_world(Vec3::X *  2.), op.rot, 0.2, RED).resolution(8);
-            gizmos.sphere(op.local_to_world(Vec3::X * -1.), op.rot, 0.2, RED).resolution(8);
-            gizmos.sphere(op.local_to_world(Vec3::X * -2.), op.rot, 0.2, RED).resolution(8);
-            gizmos.sphere(op.local_to_world(Vec3::Y *  1.), op.rot, 0.2, RED).resolution(8);
-            gizmos.sphere(op.local_to_world(Vec3::Y *  2.), op.rot, 0.2, RED).resolution(8);
+            // gizmos.sphere(op.local_to_world(Vec3::X *  1.), op.rot, 0.2, RED).resolution(8);
+            // gizmos.sphere(op.local_to_world(Vec3::X *  2.), op.rot, 0.2, RED).resolution(8);
+            // gizmos.sphere(op.local_to_world(Vec3::X * -1.), op.rot, 0.2, RED).resolution(8);
+            // gizmos.sphere(op.local_to_world(Vec3::X * -2.), op.rot, 0.2, RED).resolution(8);
+            // gizmos.sphere(op.local_to_world(Vec3::Y *  1.), op.rot, 0.2, RED).resolution(8);
+            // gizmos.sphere(op.local_to_world(Vec3::Y *  2.), op.rot, 0.2, RED).resolution(8);
+
+            draw_shape(&mut gizmos, op, Vec3::X *  1.);
+            draw_shape(&mut gizmos, op, Vec3::X *  2.);
+            draw_shape(&mut gizmos, op, Vec3::X * -1.);
+            draw_shape(&mut gizmos, op, Vec3::X * -2.);
+            draw_shape(&mut gizmos, op, Vec3::Y *  1.);
+            draw_shape(&mut gizmos, op, Vec3::Y *  2.);
         }
     }
 }
 
+fn draw_shape(gizmos: &mut Gizmos<'_, '_>, op: OrientedPoint, local_space_pos: Vec3) {
+    const RED: Srgba = bevy::color::palettes::basic::RED;
+    gizmos.sphere(op.local_to_world(local_space_pos), op.rot, 0.2, RED).resolution(8);
+}
+
+fn draw_profile(
+    ui_state: Res<UiState>,
+    road_segments: Query<&RoadSegment>,
+    mut moving_spheres: Query<&mut Transform, With<MovingSphere>>,
+    mut gizmos: Gizmos
+){
+    for rs in road_segments.iter() {
+        let op = rs.get_bezier_oriented_point(ui_state.value);
+        let shape_2d = Mesh2d::circle_8();
+
+        for v in shape_2d.vertices {
+            draw_shape(&mut gizmos, op,  Vec3::new(v.point.x, v.point.y, 0.));
+        }
+    }
+}

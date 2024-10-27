@@ -2,7 +2,7 @@ use std::vec;
 use bevy::math::*;
 use std::num;
 
-struct Vertex {
+pub struct Vertex {
 	pub point: Vec2,
 	pub normal: Vec2,
 	pub u: f32,	//when we will extrurde the shape we will get uv's from that
@@ -28,8 +28,8 @@ pub struct Mesh2d {
 impl Mesh2d {
 	pub fn circle_8 () -> Self {
 		let sqrt = -1./f32::sqrt(2.);
-		let sin45_half = f32::sin(f32::to_radians(45.)/2);
-		let cos45_half = f32::cos(f32::to_radians(45.)/2);
+		let sin45_half = f32::sin(f32::to_radians(45.)/2.);
+		let cos45_half = f32::cos(f32::to_radians(45.)/2.);
 		Self {
 			vertices: vec![
 				//TODO: set correct normals
