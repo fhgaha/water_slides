@@ -1,4 +1,5 @@
 mod oriented_point;
+mod mesh_2d;
 
 use std::ops::DerefMut;
 use bevy::prelude::*;
