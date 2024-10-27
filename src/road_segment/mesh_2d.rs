@@ -22,14 +22,14 @@ impl Vertex {
 //a shape that is translated across curve after which every step profile would be created
 pub struct Mesh2d {
 	pub vertices: Vec<Vertex>,
-	pub line_indices: Vec<i32>,
+	pub line_indices: Vec<usize>,
 }
 
 impl Mesh2d {
 	pub fn circle_8 () -> Self {
-		let sqrt = -1./f32::sqrt(2.);
-		let sin45_half = f32::sin(f32::to_radians(45.)/2.);
-		let cos45_half = f32::cos(f32::to_radians(45.)/2.);
+		let sqrt = 1./f32::sqrt(2.);
+		// let sin45_half = f32::sin(f32::to_radians(45.)/2.);
+		// let cos45_half = f32::cos(f32::to_radians(45.)/2.);
 		Self {
 			vertices: vec![
 				//TODO: set correct normals
@@ -51,8 +51,7 @@ impl Mesh2d {
 				Vertex::new(Vec2::new(sqrt, sqrt),    Vec2::Y, 0.),
 			],
 			line_indices: vec![
-				//16, ??
-				15, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14
+				1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 0
 			]
 		}
 	}

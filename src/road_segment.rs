@@ -2,7 +2,7 @@ mod oriented_point;
 mod mesh_2d;
 
 use std::ops::DerefMut;
-use bevy::prelude::*;
+use bevy::{color::palettes::basic::AQUA, prelude::*};
 use bevy_mod_raycast::prelude::*;
 use my_ui::*;
 use oriented_point::OrientedPoint;
@@ -99,7 +99,7 @@ fn setup(
         commands.spawn((
             PbrBundle {
                 mesh: meshes.add(Sphere::new(1.)),
-                material: materials.add(Color::srgb(1., 1., 1.)),
+                material: materials.add(Color::srgba(1., 1., 1., 0.2)),
                 transform: Transform::from_translation(p),
                 ..default()
             },
@@ -313,8 +313,29 @@ fn draw_profile(
         let op = rs.get_bezier_oriented_point(ui_state.value);
         let shape_2d = Mesh2d::circle_8();
 
-        for v in shape_2d.vertices {
-            draw_shape(&mut gizmos, op,  Vec3::new(v.point.x, v.point.y, 0.));
-        }
+        // for v in shape_2d.vertices.iter() {
+        //     draw_shape(&mut gizmos, op,  Vec3::new(v.point.x, v.point.y, 0.));
+        // }
+
+        for mut sphere in moving_spheres.iter_mut() {
+            sphere.translation = op.pos;
+            //lock Y for this quat when you dont want the thing to rotate around movement direction
+            sphere.rotation = op.rot;
+
+            gizmos.axes(*sphere.deref_mut(), 4.);
+     
+     
+            let verts: Vec<Vec3> = shape_2d.vertices.iter()
+                .map(|v| op.local_to_world(Vec3::new(v.point.x, v.point.y, 0.)))
+                .collect();
+
+            for line_idx in shape_2d.line_indices.chunks(2) {
+                let a = verts[line_idx[0]];
+                let b = verts[line_idx[1]];
+                gizmos.line(a, b, Color::srgb(1., 1., 1.));
+            }
+         }
+
+
     }
 }
