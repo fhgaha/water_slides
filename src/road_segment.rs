@@ -32,14 +32,16 @@ impl Plugin for RoadSegmentPlugin {
 #[derive(Component)]
 struct RoadSegment {
     curve: CubicBezier<Vec3>,
-    pts: [Entity; 4]
+    pts: [Entity; 4],
+    mesh_id: Option<AssetId<Mesh>>,
 }
 
 impl Default for RoadSegment {
     fn default() -> Self {
         Self{
             curve: CubicBezier::new([[Vec3::INFINITY, Vec3::INFINITY, Vec3::INFINITY, Vec3::INFINITY]]),
-            pts: [Entity::from_bits(0); 4]
+            pts: [Entity::from_bits(0); 4],
+            mesh_id: None,
         }
     }
 }
@@ -116,17 +118,6 @@ fn setup(
         .id()
     });
 
-    //road segment
-    commands
-        .spawn((
-                SpatialBundle::default(),
-                RoadSegment {
-                    curve: CubicBezier::new([positions]),
-                    pts: control_pts_ids
-                }
-        ))
-        .push_children(&control_pts_ids);
-
     //moving sphere
     commands.spawn((
         PbrBundle{
@@ -158,6 +149,7 @@ fn setup(
         .with_inserted_indices(Indices::U32(vec![0, 3, 1, 1, 3, 2]))
         .with_computed_normals()
     );
+    let mesh_handle_id = mesh_handle.id();
 
     // Render the mesh with the custom texture using a PbrBundle, add the marker.
     commands.spawn((
@@ -172,6 +164,17 @@ fn setup(
         CustomUV,
     ));
 
+    //road segment
+    commands
+        .spawn((
+                SpatialBundle::default(),
+                RoadSegment {
+                    curve: CubicBezier::new([positions]),
+                    pts: control_pts_ids,
+                    mesh_id: Some(mesh_handle_id)
+                }
+        ))
+        .push_children(&control_pts_ids);
 
 }
 
@@ -431,37 +434,34 @@ fn draw_profile(
 
 fn generate_mesh(
     road_segments: Query<&RoadSegment>,
-    mesh_query: Query<&Handle<Mesh>, With<CustomUV>>,
-    mut meshes: ResMut<Assets<Mesh>>,
-    mut query: Query<&mut Transform, With<CustomUV>>,
+    mut mesh_asset_server: ResMut<Assets<Mesh>>,
+    // mut query: Query<&mut Transform, With<CustomUV>>,
 ) {
     for rs in road_segments.iter() {
-        
-    }
+        if let Some(mesh_id) = rs.mesh_id {
+            let mesh = mesh_asset_server.get_mut(mesh_id).unwrap();
 
-    for handle_mesh in mesh_query.iter() {
-        let mesh = meshes.get_mut(handle_mesh).unwrap();
-        
-        //change positions
-        mesh.insert_attribute(Mesh::ATTRIBUTE_POSITION, 
-        vec![
-            Vec3::X,
-            Vec3::X,
-            Vec3::X,
-            Vec3::X,
-        ]);
+            //change positions
+            mesh.insert_attribute(Mesh::ATTRIBUTE_POSITION, 
+            vec![
+                Vec3::X * 10.,
+                Vec3::X * 10.,
+                Vec3::X * 10.,
+                Vec3::X * 10.,
+            ]);
 
-        mesh.compute_normals();
-        
-        //check changes
-        let pos_attr = mesh.attribute_mut(Mesh::ATTRIBUTE_POSITION).unwrap();
-        let VertexAttributeValues::Float32x3(pos_attr) = pos_attr else {return;};
+            mesh.compute_normals();
+            
+            //check changes
+            let pos_attr = mesh.attribute_mut(Mesh::ATTRIBUTE_POSITION).unwrap();
+            let VertexAttributeValues::Float32x3(pos_attr) = pos_attr else {return;};
 
-        for p in pos_attr.iter_mut() {
-            println!("p: {:?}", p);
+            for p in pos_attr.iter_mut() {
+                println!("p: {:?}", p);
+            }
+
+            println!("====");
         }
-
-        println!("====");
 
     }
 }
