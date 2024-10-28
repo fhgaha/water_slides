@@ -69,6 +69,23 @@ impl RoadSegment {
             self.curve.to_curve().velocity(t).normalize()
         )
     }
+
+    fn get_profile_center_and_lines(&self, t: f32, profile_shape: Mesh2d) -> (OrientedPoint, Vec<(Vec3, Vec3)>) {
+        let op = self.get_bezier_oriented_point(t);
+        let shape_2d = profile_shape;
+        
+        //lines
+        let verts: Vec<Vec3> = shape_2d.vertices.iter()
+            .map(|v| op.local_to_world(Vec3::new(v.point.x, v.point.y, 0.)))
+            .collect();
+
+        let line_pairs: Vec<(Vec3, Vec3)> = shape_2d.line_indices
+            .chunks(2)
+            .map(|line_idx| (verts[line_idx[0]], verts[line_idx[1]]))
+            .collect();
+
+        (op, line_pairs)
+    }
 }
 
 #[derive(PartialEq)]
@@ -395,31 +412,21 @@ fn draw_profile(
     mut gizmos: Gizmos
 ){
     for rs in road_segments.iter() {
-        let op = rs.get_bezier_oriented_point(ui_state.value);
-        let shape_2d = Mesh2d::circle_8();
-
-        // for v in shape_2d.vertices.iter() {
-        //     draw_shape(&mut gizmos, op,  Vec3::new(v.point.x, v.point.y, 0.));
-        // }
-
         for mut sphere in moving_spheres.iter_mut() {
-            sphere.translation = op.pos;
-            //lock Y for this quat when you dont want the thing to rotate around movement direction
-            sphere.rotation = op.rot;
+            
+            let t = ui_state.value;
+            
+            let (center, profile_edges) 
+                = rs.get_profile_center_and_lines(t, Mesh2d::circle_8());
 
-            gizmos.axes(*sphere.deref_mut(), 4.);
-     
-            //lines
-            let verts: Vec<Vec3> = shape_2d.vertices.iter()
-                .map(|v| op.local_to_world(Vec3::new(v.point.x, v.point.y, 0.)))
-                .collect();
-
-            for line_idx in shape_2d.line_indices.chunks(2) {
-                let a = verts[line_idx[0]];
-                let b = verts[line_idx[1]];
-
-                gizmos.line(a, b, AQUA);
+            for (from, to) in profile_edges {
+                gizmos.line(from, to, AQUA);
             }
+
+            sphere.translation = center.pos;
+            //lock Y for this quat when you dont want the thing to rotate around movement direction
+            sphere.rotation = center.rot;
+            gizmos.axes(*sphere.deref_mut(), 4.);
          }
     
     // https://github.com/Kurble/bevy_mod_inverse_kinematics
@@ -431,6 +438,8 @@ fn draw_profile(
     //natural cubic spline
     }
 }
+
+
 
 fn generate_mesh(
     road_segments: Query<&RoadSegment>,
