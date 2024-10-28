@@ -2,7 +2,7 @@ mod oriented_point;
 mod mesh_2d;
 
 use std::ops::DerefMut;
-use bevy::{color::palettes::basic::AQUA, prelude::*};
+use bevy::{color::palettes::basic::AQUA, prelude::*, render::{mesh::{Indices, PrimitiveTopology, VertexAttributeValues}, render_asset::RenderAssetUsages}};
 use bevy_mod_raycast::prelude::*;
 use my_ui::*;
 use oriented_point::OrientedPoint;
@@ -83,10 +83,15 @@ struct ControlPointDraggable {
 #[derive(Component)]
 struct MovingSphere;
 
+#[derive(Component)]
+struct CustomUV;
+
+
 fn setup(
     mut commands: Commands,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
+    asset_server: Res<AssetServer>,
 ) {
     let positions = [
         Vec3::new(-10., 0.,  10.),
@@ -132,6 +137,42 @@ fn setup(
         },
         MovingSphere
     ));
+
+
+    //generated mesh
+
+    // Import the custom texture.
+    let custom_texture_handle: Handle<Image> = asset_server.load("textures/array_texture.png");
+    // Create and save a handle to the mesh.
+    let mesh_handle: Handle<Mesh> = meshes.add(
+        Mesh::new(
+            PrimitiveTopology::TriangleList, 
+            RenderAssetUsages::MAIN_WORLD | RenderAssetUsages::RENDER_WORLD
+        )
+        .with_inserted_attribute(Mesh::ATTRIBUTE_POSITION, vec![
+            Vec3::new(-1.,  1., 0.),
+            Vec3::new( 1.,  1., 0.),
+            Vec3::new( 1., -1., 0.),
+            Vec3::new(-1., -1., 0.),
+        ])
+        .with_inserted_indices(Indices::U32(vec![0, 3, 1, 1, 3, 2]))
+        .with_computed_normals()
+    );
+
+    // Render the mesh with the custom texture using a PbrBundle, add the marker.
+    commands.spawn((
+        PbrBundle {
+            mesh: mesh_handle,
+            material: materials.add(StandardMaterial {
+                base_color_texture: Some(custom_texture_handle),
+                ..default()
+            }),
+            ..default()
+        },
+        CustomUV,
+    ));
+
+
 }
 
 fn update_states(
@@ -390,8 +431,37 @@ fn draw_profile(
 
 fn generate_mesh(
     road_segments: Query<&RoadSegment>,
+    mesh_query: Query<&Handle<Mesh>, With<CustomUV>>,
+    mut meshes: ResMut<Assets<Mesh>>,
+    mut query: Query<&mut Transform, With<CustomUV>>,
 ) {
     for rs in road_segments.iter() {
         
+    }
+
+    for handle_mesh in mesh_query.iter() {
+        let mesh = meshes.get_mut(handle_mesh).unwrap();
+        
+        //change positions
+        mesh.insert_attribute(Mesh::ATTRIBUTE_POSITION, 
+        vec![
+            Vec3::X,
+            Vec3::X,
+            Vec3::X,
+            Vec3::X,
+        ]);
+
+        mesh.compute_normals();
+        
+        //check changes
+        let pos_attr = mesh.attribute_mut(Mesh::ATTRIBUTE_POSITION).unwrap();
+        let VertexAttributeValues::Float32x3(pos_attr) = pos_attr else {return;};
+
+        for p in pos_attr.iter_mut() {
+            println!("p: {:?}", p);
+        }
+
+        println!("====");
+
     }
 }

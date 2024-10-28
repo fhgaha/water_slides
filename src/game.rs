@@ -41,7 +41,7 @@ impl Plugin for GamePlugin {
                 (
                     setup,
                     setup_cursor,
-                    draw_quad
+                    // draw_quad
                 ),
             )
             .add_systems(
@@ -91,14 +91,14 @@ fn setup(
     // Light
     commands.spawn(DirectionalLightBundle {
         directional_light: DirectionalLight {
-            illuminance: 1000.,
+            illuminance: 10_000.,
             shadows_enabled: true,
             ..default()
         },
         transform: Transform::from_rotation(Quat::from_euler(
             EulerRot::YXZ,
             f32::to_radians(150.),
-            f32::to_radians(-40.),
+            f32::to_radians(-40. - 90.),
             0.,
         )),
         ..default()
