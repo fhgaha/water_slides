@@ -41,7 +41,7 @@ impl Plugin for GamePlugin {
                 (
                     setup,
                     setup_cursor,
-                    //draw_quad
+                    draw_quad
                 ),
             )
             .add_systems(
@@ -189,11 +189,16 @@ fn draw_quad(
     let points = vec![
         Vec3::new(-1.,  1., 0.),
         Vec3::new( 1.,  1., 0.),
-        Vec3::new(-1., -1., 0.),
         Vec3::new( 1., -1., 0.),
+        Vec3::new(-1., -1., 0.),
     ];
 
-    let tri_indices = vec![2, 1, 0, 1, 2, 3];
+    //0 ._____. 1
+    //  |    /|
+    //  |  /  |
+    //3 ./____. 2
+    //counter-clock-wise
+    let tri_indices = vec![0, 3, 1, 1, 3, 2];
 
     let mut mesh = Mesh::new(
         PrimitiveTopology::TriangleList,

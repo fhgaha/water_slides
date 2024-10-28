@@ -22,7 +22,8 @@ impl Plugin for RoadSegmentPlugin {
                 // draw_spline
                 draw_curve_using_road_segment,
                 // move_shpere_along_curve,
-                draw_profile
+                draw_profile,
+                generate_mesh
             )
         );
     }
@@ -235,6 +236,7 @@ fn draw_spline(
     }
 }
 
+
 fn draw_curve_using_road_segment(
     mut road_segments: Query<&mut RoadSegment>,
     transforms: Query<&Transform>,    
@@ -243,6 +245,45 @@ fn draw_curve_using_road_segment(
     for mut rs in road_segments.iter_mut() {
         gizmos.linestrip(
             rs.curve_pts(&transforms, 100), 
+            Color::WHITE
+        );
+    }
+}
+
+#[allow(dead_code)]
+fn draw_curve_using_road_segment_other_curve_options(
+    mut road_segments: Query<&mut RoadSegment>,
+    transforms: Query<&Transform>,    
+    mut gizmos: Gizmos,
+) {
+    for mut rs in road_segments.iter_mut() {
+        
+         let positions: [Vec3; 4] = rs.pts
+            .iter()
+            .map(|pt| transforms.get(*pt).unwrap().translation)
+            .collect::<Vec<_>>()
+            .try_into()
+            .unwrap();
+
+        // let curve = CubicBezier::new([positions]);
+        // let curve = CubicBSpline::new(positions);
+        let curve = CubicCardinalSpline::new(0.7, positions); //this looks good
+        // let curve = CubicHermite::new(positions, [Vec3::splat(10.); 4]);
+
+        // let weights = [10.0, 10.0, 20.0, 10.0];
+        // let knots = [0.0, 0.0, 10.0, 20.0, 30.0, 40.0, 50.0, 50.0];
+        // let curve = CubicNurbs::new(positions, Some(weights), Some(knots))
+        //     .expect("NURBS construction failed!");
+
+        let positions = curve
+            .to_curve()
+            .iter_positions(100)
+            .collect::<Vec<Vec3>>();
+
+        // let positions = rs.curve_pts(&transforms, 100);
+        
+        gizmos.linestrip(
+            positions, 
             Color::WHITE
         );
     }
@@ -324,7 +365,7 @@ fn draw_profile(
 
             gizmos.axes(*sphere.deref_mut(), 4.);
      
-     
+            //lines
             let verts: Vec<Vec3> = shape_2d.vertices.iter()
                 .map(|v| op.local_to_world(Vec3::new(v.point.x, v.point.y, 0.)))
                 .collect();
@@ -332,10 +373,25 @@ fn draw_profile(
             for line_idx in shape_2d.line_indices.chunks(2) {
                 let a = verts[line_idx[0]];
                 let b = verts[line_idx[1]];
-                gizmos.line(a, b, Color::srgb(1., 1., 1.));
+
+                gizmos.line(a, b, AQUA);
             }
          }
+    
+    // https://github.com/Kurble/bevy_mod_inverse_kinematics
 
+    //cubic
+    //quadratic
+    //quentic
+    // Catmull-Rom
+    //natural cubic spline
+    }
+}
 
+fn generate_mesh(
+    road_segments: Query<&RoadSegment>,
+) {
+    for rs in road_segments.iter() {
+        
     }
 }
