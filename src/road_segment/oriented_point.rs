@@ -1,4 +1,4 @@
-use bevy::math::{Quat, Vec3};
+use bevy::{math::{Quat, Vec3}, prelude::Vec2};
 
 #[derive(Clone, Copy)]
 pub struct OrientedPoint {
@@ -14,9 +14,13 @@ impl OrientedPoint {
         }
     }
 
-    pub fn local_to_world(self, local_space_pos: Vec3) -> Vec3 {
-        let world_pos = self.rot * local_space_pos;
+    pub fn local_to_world_pos(self, local_space_pos: Vec2) -> Vec3 {
+        let world_pos = self.rot * local_space_pos.extend(0.);
         self.pos + world_pos
+    }
+
+    pub fn local_to_world_vect(self, local_space_pos: Vec2) -> Vec3 {
+        self.rot * local_space_pos.extend(0.)
     }
 }
    

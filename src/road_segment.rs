@@ -18,12 +18,12 @@ impl Plugin for RoadSegmentPlugin {
             Update,
             (
                 // update_road_segment_pts,
-                (update_states, update_positions).chain(), 
+                ((update_states, update_positions).chain(), 
                 // draw_spline
                 draw_curve_using_road_segment,
                 // move_shpere_along_curve,
                 draw_profile,
-                generate_mesh
+                generate_mesh).chain()
             )
         );
     }
@@ -70,13 +70,13 @@ impl RoadSegment {
         )
     }
 
-    fn get_profile_center_and_lines(&self, t: f32, profile_shape: Mesh2d) -> (OrientedPoint, Vec<(Vec3, Vec3)>) {
+    fn get_profile_center_and_lines(&self, t: f32, profile_shape: &Mesh2d) -> (OrientedPoint, Vec<(Vec3, Vec3)>) {
         let op = self.get_bezier_oriented_point(t);
         let shape_2d = profile_shape;
         
         //lines
         let verts: Vec<Vec3> = shape_2d.vertices.iter()
-            .map(|v| op.local_to_world(Vec3::new(v.point.x, v.point.y, 0.)))
+            .map(|v| op.local_to_world_pos(v.point))
             .collect();
 
         let line_pairs: Vec<(Vec3, Vec3)> = shape_2d.line_indices
@@ -383,26 +383,20 @@ fn move_shpere_along_curve(
             gizmos.axes(*sphere.deref_mut(), 4.);
 
             const RED: Srgba = bevy::color::palettes::basic::RED;
-            // gizmos.sphere(op.local_to_world(Vec3::X *  1.), op.rot, 0.2, RED).resolution(8);
-            // gizmos.sphere(op.local_to_world(Vec3::X *  2.), op.rot, 0.2, RED).resolution(8);
-            // gizmos.sphere(op.local_to_world(Vec3::X * -1.), op.rot, 0.2, RED).resolution(8);
-            // gizmos.sphere(op.local_to_world(Vec3::X * -2.), op.rot, 0.2, RED).resolution(8);
-            // gizmos.sphere(op.local_to_world(Vec3::Y *  1.), op.rot, 0.2, RED).resolution(8);
-            // gizmos.sphere(op.local_to_world(Vec3::Y *  2.), op.rot, 0.2, RED).resolution(8);
 
-            draw_shape(&mut gizmos, op, Vec3::X *  1.);
-            draw_shape(&mut gizmos, op, Vec3::X *  2.);
-            draw_shape(&mut gizmos, op, Vec3::X * -1.);
-            draw_shape(&mut gizmos, op, Vec3::X * -2.);
-            draw_shape(&mut gizmos, op, Vec3::Y *  1.);
-            draw_shape(&mut gizmos, op, Vec3::Y *  2.);
+            draw_shape(&mut gizmos, op, Vec2::X *  1.);
+            draw_shape(&mut gizmos, op, Vec2::X *  2.);
+            draw_shape(&mut gizmos, op, Vec2::X * -1.);
+            draw_shape(&mut gizmos, op, Vec2::X * -2.);
+            draw_shape(&mut gizmos, op, Vec2::Y *  1.);
+            draw_shape(&mut gizmos, op, Vec2::Y *  2.);
         }
     }
 }
 
-fn draw_shape(gizmos: &mut Gizmos<'_, '_>, op: OrientedPoint, local_space_pos: Vec3) {
+fn draw_shape(gizmos: &mut Gizmos<'_, '_>, op: OrientedPoint, local_space_pos: Vec2) {
     const RED: Srgba = bevy::color::palettes::basic::RED;
-    gizmos.sphere(op.local_to_world(local_space_pos), op.rot, 0.2, RED).resolution(8);
+    gizmos.sphere(op.local_to_world_pos(local_space_pos), op.rot, 0.2, RED).resolution(8);
 }
 
 fn draw_profile(
@@ -415,9 +409,10 @@ fn draw_profile(
         for mut sphere in moving_spheres.iter_mut() {
             
             let t = ui_state.value;
+            let shape2d = Mesh2d::circle_8();
             
             let (center, profile_edges) 
-                = rs.get_profile_center_and_lines(t, Mesh2d::circle_8());
+                = rs.get_profile_center_and_lines(t, &shape2d);
 
             for (from, to) in profile_edges {
                 gizmos.line(from, to, AQUA);
@@ -439,37 +434,141 @@ fn draw_profile(
     }
 }
 
-
-
 fn generate_mesh(
     road_segments: Query<&RoadSegment>,
     mut mesh_asset_server: ResMut<Assets<Mesh>>,
     // mut query: Query<&mut Transform, With<CustomUV>>,
 ) {
     for rs in road_segments.iter() {
+
+        let shape2d = Mesh2d::circle_8();
+
+        // Vertices
+        let min_ring_cnt = 2;
+        let edge_ring_count= 8;
+        let mut verts = Vec::<Vec3>::new(); 
+
+        for ring in min_ring_cnt..edge_ring_count {
+            let t: f32 = ring as f32 / (edge_ring_count - 1) as f32;
+            let op = rs.get_bezier_oriented_point(t);
+        
+            for i in 0..shape2d.vertex_count() {
+                let world_pos = op.local_to_world_pos(shape2d.vertices[i].point);
+                verts.push(world_pos);
+            }
+        }
+        
+        //
+        //  A                   B
+        //  .___________________.
+        //  |    ring next      |
+        //  |                /  |
+        //  |             /     |
+        //  |          /        |
+        //  |       /           |
+        //  |    /              |
+        //  | /                 |
+        //  .___________________.
+        //  A    ring curr      B
+        //
+        // should be counter-clockwise in bevy
+        //
+
+        // Triangles
+        let mut tri_indices = Vec::<u32>::new();
+
+        for ring in 0..(edge_ring_count-1) {
+            
+            let root_idx = ring * shape2d.vertex_count();
+            let root_idx_next = (ring + 1) * shape2d.vertex_count();
+
+            for line in (0..shape2d.line_count()).step_by(2) {
+                
+                let line_idx_a = shape2d.line_indices[line];
+                let line_idx_b = shape2d.line_indices[line + 1];
+                
+                let curr_a = root_idx + line_idx_a;
+                let curr_b = root_idx + line_idx_b;
+                let next_a = root_idx_next + line_idx_a;
+                let next_b = root_idx_next + line_idx_b;
+
+                tri_indices.push(curr_a as u32);
+                tri_indices.push(curr_b as u32);
+                tri_indices.push(next_b as u32);
+
+                tri_indices.push(curr_a as u32);
+                tri_indices.push(next_b as u32);
+                tri_indices.push(next_a as u32);
+
+                // // freya's
+                // tri_indices.push(curr_a as u32);
+                // tri_indices.push(next_a as u32);
+                // tri_indices.push(next_b as u32);
+
+                // tri_indices.push(curr_a as u32);
+                // tri_indices.push(next_b as u32);
+                // tri_indices.push(curr_b as u32);
+            }
+        }
+
+        // 16 pts per ring
+        // 8 rings
+        // 16 * 8 = 128
+        // but we go from ring 2 to 8 exclusively so 128 - 16 * 2 = 128 - 32 = 96
+        // 6 rings total, so 16 * 6 = 96 again 
+        // verts connect
+        // 
+        // tri indeces should be:
+        // from one ring to next ring - 16 tris per two rings, so 16 * 2 = 32 tri indeses
+        // is:
+        // connections from 7 cur rings to the next ring 
+        // 7 * 32 = 224 tri indeces should be
+        // 8 lines, each has 2 tris, each tri has 3 indeces. so 3 * 2 * 8 = 48 indeces per connection
+        // 48 * 7 = 336 indeces
+        // tri indeces look correct
+
+
+        // println!("verts len: {}, tris.len: {}", verts.len(), tri_indices.len());
+
+        //use verts and tris
         if let Some(mesh_id) = rs.mesh_id {
             let mesh = mesh_asset_server.get_mut(mesh_id).unwrap();
 
-            //change positions
-            mesh.insert_attribute(Mesh::ATTRIBUTE_POSITION, 
-            vec![
-                Vec3::X * 10.,
-                Vec3::X * 10.,
-                Vec3::X * 10.,
-                Vec3::X * 10.,
-            ]);
-
-            mesh.compute_normals();
-            
-            //check changes
-            let pos_attr = mesh.attribute_mut(Mesh::ATTRIBUTE_POSITION).unwrap();
-            let VertexAttributeValues::Float32x3(pos_attr) = pos_attr else {return;};
-
-            for p in pos_attr.iter_mut() {
-                println!("p: {:?}", p);
+            //this causes lld error
+            if verts.len() == 96 && tri_indices.len() == 336 {
+                mesh.remove_attribute(Mesh::ATTRIBUTE_POSITION);
+                mesh.remove_indices();
+                mesh.insert_attribute(Mesh::ATTRIBUTE_POSITION, verts);
+                mesh.insert_indices(Indices::U32(tri_indices));
             }
 
-            println!("====");
+            // mesh.remove_attribute(Mesh::ATTRIBUTE_POSITION);
+            // mesh.remove_indices();
+            
+            // mesh.insert_attribute(Mesh::ATTRIBUTE_POSITION, verts);
+            // // vec![
+            // //     Vec3::X * 10.,
+            // //     Vec3::X * 10.,
+            // //     Vec3::X * 10.,
+            // //     Vec3::X * 10.,
+            // // ]
+
+            // mesh.insert_indices(Indices::U32(tri_indices));
+            // vec![0, 3, 1, 1, 3, 2]
+
+            // mesh.compute_normals();
+            // mesh.compute_flat_normals();
+            // mesh.compute_smooth_normals();
+
+            //check changes
+            // let pos_attr = mesh.attribute_mut(Mesh::ATTRIBUTE_POSITION).unwrap();
+            // let VertexAttributeValues::Float32x3(pos_attr) = pos_attr else {return;};
+
+            // for p in pos_attr.iter_mut() {
+            //     println!("p: {:?}", p);
+            // }
+
+            // println!("====");
         }
 
     }

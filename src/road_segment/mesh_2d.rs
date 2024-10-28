@@ -1,6 +1,5 @@
 use std::vec;
 use bevy::math::*;
-use std::num;
 
 pub struct Vertex {
 	pub point: Vec2,
@@ -26,6 +25,14 @@ pub struct Mesh2d {
 }
 
 impl Mesh2d {
+	pub fn vertex_count(&self) -> usize {
+		self.vertices.len()
+	}
+
+	pub fn line_count(&self) -> usize {
+		self.line_indices.len()
+	}
+
 	pub fn circle_8 () -> Self {
 		let sqrt = 1./f32::sqrt(2.);
 		// let sin45_half = f32::sin(f32::to_radians(45.)/2.);
