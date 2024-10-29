@@ -2,7 +2,7 @@ mod oriented_point;
 mod mesh_2d;
 
 use std::ops::DerefMut;
-use bevy::{color::palettes::basic::AQUA, prelude::*, render::{mesh::{Indices, PrimitiveTopology, VertexAttributeValues}, render_asset::RenderAssetUsages}};
+use bevy::{color::palettes::basic::AQUA, prelude::*, render::{mesh::{Indices, PrimitiveTopology}, render_asset::RenderAssetUsages}};
 use bevy_mod_raycast::prelude::*;
 use my_ui::*;
 use oriented_point::OrientedPoint;
@@ -16,15 +16,16 @@ impl Plugin for RoadSegmentPlugin {
         app.add_systems(Startup, setup);
         app.add_systems(
             Update,
-            (
                 // update_road_segment_pts,
-                ((update_states, update_positions).chain(), 
-                // draw_spline
-                draw_curve_using_road_segment,
-                // move_shpere_along_curve,
-                draw_profile,
-                generate_mesh).chain()
-            )
+                (
+                    update_states, 
+                    update_positions, 
+                    // draw_spline
+                    draw_curve_using_road_segment,
+                    // move_shpere_along_curve,
+                    draw_profile,
+                    generate_mesh
+                ).chain()
         );
     }
 }
@@ -32,7 +33,7 @@ impl Plugin for RoadSegmentPlugin {
 #[derive(Component)]
 struct RoadSegment {
     curve: CubicBezier<Vec3>,
-    pts: [Entity; 4],
+    pts_ids: [Entity; 4],
     mesh_id: Option<AssetId<Mesh>>,
 }
 
@@ -40,22 +41,29 @@ impl Default for RoadSegment {
     fn default() -> Self {
         Self{
             curve: CubicBezier::new([[Vec3::INFINITY, Vec3::INFINITY, Vec3::INFINITY, Vec3::INFINITY]]),
-            pts: [Entity::from_bits(0); 4],
+            pts_ids: [Entity::from_bits(0); 4],
             mesh_id: None,
         }
     }
 }
 
 impl RoadSegment {
-    fn curve_pts(&mut self, transforms: &Query<&Transform>, subdivisions: usize) -> Vec<Vec3> {
-        let positions: [Vec3; 4] = self.pts
+    fn transforms_to_positions(&self, transforms: &Query<&Transform>) -> Vec<Vec3> {
+        let points: Vec<Vec3> = self.pts_ids
             .iter()
-            .map(|pt| transforms.get(*pt).unwrap().translation)
-            .collect::<Vec<_>>()
+            .map(|pt_id| transforms.get(*pt_id).unwrap().translation)
+            .collect();
+
+        points
+    }
+
+    fn curve_pts(&mut self, positions: &Vec<Vec3>, subdivisions: usize) -> Vec<Vec3> {
+        let positions_as_arr: [Vec3; 4] = positions
+            .as_slice()
             .try_into()
             .unwrap();
 
-        self.curve = CubicBezier::new([positions]);
+        self.curve = CubicBezier::new([positions_as_arr]);
 
         self.curve
             .to_curve()
@@ -187,7 +195,7 @@ fn setup(
                 SpatialBundle::default(),
                 RoadSegment {
                     curve: CubicBezier::new([positions]),
-                    pts: control_pts_ids,
+                    pts_ids: control_pts_ids,
                     mesh_id: Some(mesh_handle_id)
                 }
         ))
@@ -304,8 +312,10 @@ fn draw_curve_using_road_segment(
     mut gizmos: Gizmos,
 ) {
     for mut rs in road_segments.iter_mut() {
+        let positions = rs.transforms_to_positions(&transforms);
+
         gizmos.linestrip(
-            rs.curve_pts(&transforms, 100), 
+            rs.curve_pts(&positions, 100), 
             Color::WHITE
         );
     }
@@ -319,7 +329,7 @@ fn draw_curve_using_road_segment_other_curve_options(
 ) {
     for mut rs in road_segments.iter_mut() {
         
-         let positions: [Vec3; 4] = rs.pts
+         let positions: [Vec3; 4] = rs.pts_ids
             .iter()
             .map(|pt| transforms.get(*pt).unwrap().translation)
             .collect::<Vec<_>>()
@@ -435,13 +445,21 @@ fn draw_profile(
 }
 
 fn generate_mesh(
-    road_segments: Query<&RoadSegment>,
+    mut road_segments: Query<&mut RoadSegment>,
     mut mesh_asset_server: ResMut<Assets<Mesh>>,
     // mut query: Query<&mut Transform, With<CustomUV>>,
+    control_pts: Query<&Transform, With<ControlPointDraggable>>,
 ) {
-    for rs in road_segments.iter() {
+    for mut rs in road_segments.iter_mut() {
 
         let shape2d = Mesh2d::circle_8();
+
+        let positions: Vec<Vec3> = rs.pts_ids
+            .iter()
+            .map(|pt_id| control_pts.get(*pt_id).unwrap().translation)
+            .collect();
+        
+        rs.curve_pts(&positions, 100);
 
         // Vertices
         let min_ring_cnt = 2;
@@ -450,8 +468,9 @@ fn generate_mesh(
 
         for ring in min_ring_cnt..edge_ring_count {
             let t: f32 = ring as f32 / (edge_ring_count - 1) as f32;
+
             let op = rs.get_bezier_oriented_point(t);
-        
+
             for i in 0..shape2d.vertex_count() {
                 let world_pos = op.local_to_world_pos(shape2d.vertices[i].point);
                 verts.push(world_pos);
@@ -500,7 +519,7 @@ fn generate_mesh(
                 tri_indices.push(next_b as u32);
                 tri_indices.push(next_a as u32);
 
-                // // freya's
+                // freya's
                 // tri_indices.push(curr_a as u32);
                 // tri_indices.push(next_a as u32);
                 // tri_indices.push(next_b as u32);
@@ -528,19 +547,24 @@ fn generate_mesh(
         // tri indeces look correct
 
 
-        // println!("verts len: {}, tris.len: {}", verts.len(), tri_indices.len());
+        println!("== verts len: {}, tris.len: {}", verts.len(), tri_indices.len());
 
         //use verts and tris
         if let Some(mesh_id) = rs.mesh_id {
             let mesh = mesh_asset_server.get_mut(mesh_id).unwrap();
 
             //this causes lld error
-            if verts.len() == 96 && tri_indices.len() == 336 {
-                mesh.remove_attribute(Mesh::ATTRIBUTE_POSITION);
-                mesh.remove_indices();
-                mesh.insert_attribute(Mesh::ATTRIBUTE_POSITION, verts);
-                mesh.insert_indices(Indices::U32(tri_indices));
-            }
+            // if verts.len() == 96 && tri_indices.len() == 336 {
+            mesh.remove_attribute(Mesh::ATTRIBUTE_POSITION);
+            mesh.remove_indices();
+            // mesh.remove_attribute(Mesh::ATTRIBUTE_NORMAL);
+
+
+
+            mesh.insert_attribute(Mesh::ATTRIBUTE_POSITION, verts);
+            mesh.insert_indices(Indices::U32(tri_indices));
+            // mesh.compute_normals();
+            // }
 
             // mesh.remove_attribute(Mesh::ATTRIBUTE_POSITION);
             // mesh.remove_indices();
