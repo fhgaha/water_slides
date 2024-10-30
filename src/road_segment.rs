@@ -1,7 +1,7 @@
 mod oriented_point;
 mod mesh_2d;
 
-use std::ops::DerefMut;
+use std::{default, ops::DerefMut};
 use bevy::{color::palettes::basic::AQUA, prelude::*, render::{mesh::{Indices, PrimitiveTopology}, render_asset::RenderAssetUsages}};
 use bevy_mod_raycast::prelude::*;
 use my_ui::*;
@@ -23,7 +23,7 @@ impl Plugin for RoadSegmentPlugin {
                     // draw_spline
                     draw_curve_using_road_segment,
                     // move_shpere_along_curve,
-                    draw_profile,
+                    // draw_profile,
                     generate_mesh
                 ).chain()
         );
@@ -34,7 +34,7 @@ impl Plugin for RoadSegmentPlugin {
 struct RoadSegment {
     curve: CubicBezier<Vec3>,
     pts_ids: [Entity; 4],
-    mesh_id: Option<AssetId<Mesh>>,
+    mesh_handle: Handle<Mesh>
 }
 
 impl Default for RoadSegment {
@@ -42,7 +42,7 @@ impl Default for RoadSegment {
         Self{
             curve: CubicBezier::new([[Vec3::INFINITY, Vec3::INFINITY, Vec3::INFINITY, Vec3::INFINITY]]),
             pts_ids: [Entity::from_bits(0); 4],
-            mesh_id: None,
+            mesh_handle: Handle::<Mesh>::default(),
         }
     }
 }
@@ -57,7 +57,7 @@ impl RoadSegment {
         points
     }
 
-    fn curve_pts(&mut self, positions: &Vec<Vec3>, subdivisions: usize) -> Vec<Vec3> {
+    fn calc_and_store_curve_return_curve_pts(&mut self, positions: &Vec<Vec3>, subdivisions: usize) -> Vec<Vec3> {
         let positions_as_arr: [Vec3; 4] = positions
             .as_slice()
             .try_into()
@@ -78,15 +78,16 @@ impl RoadSegment {
         )
     }
 
+    #[allow(dead_code)]
     fn get_profile_center_and_lines(&self, t: f32, profile_shape: &Mesh2d) -> (OrientedPoint, Vec<(Vec3, Vec3)>) {
         let op = self.get_bezier_oriented_point(t);
         let shape_2d = profile_shape;
-        
+                
         //lines
         let verts: Vec<Vec3> = shape_2d.vertices.iter()
             .map(|v| op.local_to_world_pos(v.point))
             .collect();
-
+        
         let line_pairs: Vec<(Vec3, Vec3)> = shape_2d.line_indices
             .chunks(2)
             .map(|line_idx| (verts[line_idx[0]], verts[line_idx[1]]))
@@ -111,7 +112,7 @@ struct ControlPointDraggable {
 struct MovingSphere;
 
 #[derive(Component)]
-struct CustomUV;
+struct CustomMesh;
 
 
 fn setup(
@@ -159,6 +160,7 @@ fn setup(
 
     // Import the custom texture.
     let custom_texture_handle: Handle<Image> = asset_server.load("textures/array_texture.png");
+    
     // Create and save a handle to the mesh.
     let mesh_handle: Handle<Mesh> = meshes.add(
         Mesh::new(
@@ -174,19 +176,19 @@ fn setup(
         .with_inserted_indices(Indices::U32(vec![0, 3, 1, 1, 3, 2]))
         .with_computed_normals()
     );
-    let mesh_handle_id = mesh_handle.id();
-
+    // let mesh_handle_id = mesh_handle.id();
+    
     // Render the mesh with the custom texture using a PbrBundle, add the marker.
     commands.spawn((
         PbrBundle {
-            mesh: mesh_handle,
+            mesh: mesh_handle.clone(),
             material: materials.add(StandardMaterial {
                 base_color_texture: Some(custom_texture_handle),
                 ..default()
             }),
             ..default()
         },
-        CustomUV,
+        CustomMesh,
     ));
 
     //road segment
@@ -196,11 +198,12 @@ fn setup(
                 RoadSegment {
                     curve: CubicBezier::new([positions]),
                     pts_ids: control_pts_ids,
-                    mesh_id: Some(mesh_handle_id)
+                    mesh_handle: mesh_handle.clone()
                 }
         ))
         .push_children(&control_pts_ids);
 
+    commands.insert_resource(TempStoreDt(0.));
 }
 
 fn update_states(
@@ -315,7 +318,7 @@ fn draw_curve_using_road_segment(
         let positions = rs.transforms_to_positions(&transforms);
 
         gizmos.linestrip(
-            rs.curve_pts(&positions, 100), 
+            rs.calc_and_store_curve_return_curve_pts(&positions, 100), 
             Color::WHITE
         );
     }
@@ -444,26 +447,57 @@ fn draw_profile(
     }
 }
 
+#[derive(Resource)]
+struct TempStoreDt(f32);
+
 fn generate_mesh(
     mut road_segments: Query<&mut RoadSegment>,
     mut mesh_asset_server: ResMut<Assets<Mesh>>,
     // mut query: Query<&mut Transform, With<CustomUV>>,
     control_pts: Query<&Transform, With<ControlPointDraggable>>,
+    time: Res<Time>,
+    mut dt_acc: Option<ResMut<TempStoreDt>>,
 ) {
     for mut rs in road_segments.iter_mut() {
+        let Some(mesh_handle) = mesh_asset_server.get(rs.mesh_handle.id()) else {return;};
+        let Some(dt_acc) = &mut dt_acc else {return;};
+        
+        let dt = time.delta().as_secs_f32();
+        dt_acc.0 += dt;
+        let dt = dt_acc.0;
+        
+        println!("*********dt: {}", dt);
+
+        let new_mesh = Mesh::new(
+            PrimitiveTopology::TriangleList, 
+            RenderAssetUsages::MAIN_WORLD | RenderAssetUsages::RENDER_WORLD
+        )
+        .with_inserted_attribute(Mesh::ATTRIBUTE_POSITION, vec![
+            Vec3::new(-1. + dt,  1. + dt, 0. + dt),
+            Vec3::new( 1. + dt,  1. + dt, 0. + dt),
+            Vec3::new( 1. + dt, -1. + dt, 0. + dt),
+            Vec3::new(-1. + dt, -1. + dt, 0. + dt),
+        ])
+        .with_inserted_indices(Indices::U32(vec![0, 3, 1, 1, 3, 2]))
+        .with_computed_normals();
+
+        rs.mesh_handle = mesh_asset_server.add(new_mesh);
+
+        return;
+
 
         let shape2d = Mesh2d::circle_8();
 
-        let positions: Vec<Vec3> = rs.pts_ids
+        let control_pts_positions: Vec<Vec3> = rs.pts_ids
             .iter()
             .map(|pt_id| control_pts.get(*pt_id).unwrap().translation)
             .collect();
         
-        rs.curve_pts(&positions, 100);
+        rs.calc_and_store_curve_return_curve_pts(&control_pts_positions, 8);
 
         // Vertices
         let min_ring_cnt = 2;
-        let edge_ring_count= 8;
+        let edge_ring_count= 3;
         let mut verts = Vec::<Vec3>::new(); 
 
         for ring in min_ring_cnt..edge_ring_count {
@@ -547,22 +581,23 @@ fn generate_mesh(
         // tri indeces look correct
 
 
-        println!("== verts len: {}, tris.len: {}", verts.len(), tri_indices.len());
+        // println!("== verts len: {}, tris.len: {}", verts.len(), tri_indices.len());
+
+
+
 
         //use verts and tris
-        if let Some(mesh_id) = rs.mesh_id {
-            let mesh = mesh_asset_server.get_mut(mesh_id).unwrap();
+        // if let Some(mesh_id) = rs.mesh_id {
+        //     let mesh = mesh_asset_server.get_mut(mesh_id).unwrap();
 
             //this causes lld error
             // if verts.len() == 96 && tri_indices.len() == 336 {
-            mesh.remove_attribute(Mesh::ATTRIBUTE_POSITION);
-            mesh.remove_indices();
+            // mesh.remove_attribute(Mesh::ATTRIBUTE_POSITION);
+            // mesh.remove_indices();
             // mesh.remove_attribute(Mesh::ATTRIBUTE_NORMAL);
 
-
-
-            mesh.insert_attribute(Mesh::ATTRIBUTE_POSITION, verts);
-            mesh.insert_indices(Indices::U32(tri_indices));
+            // mesh.insert_attribute(Mesh::ATTRIBUTE_POSITION, verts);
+            // mesh.insert_indices(Indices::U32(tri_indices));
             // mesh.compute_normals();
             // }
 
@@ -593,7 +628,7 @@ fn generate_mesh(
             // }
 
             // println!("====");
-        }
+        // }
 
     }
 }
