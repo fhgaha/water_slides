@@ -457,33 +457,36 @@ fn generate_mesh(
     control_pts: Query<&Transform, With<ControlPointDraggable>>,
     time: Res<Time>,
     mut dt_acc: Option<ResMut<TempStoreDt>>,
+    mut query: Query<(&mut CustomMesh, &mut Handle<Mesh>)>,
 ) {
     for mut rs in road_segments.iter_mut() {
-        let Some(mesh_handle) = mesh_asset_server.get(rs.mesh_handle.id()) else {return;};
-        let Some(dt_acc) = &mut dt_acc else {return;};
+        for (mut custom_mesh, mut mesh_handle) in query.iter_mut(){
+                
+            //this thing isnt even used
+            let Some(dt_acc) = &mut dt_acc else {return;};
+            
+            let dt = time.delta().as_secs_f32();
+            dt_acc.0 += dt;
+            let dt = dt_acc.0;
+            
+            let new_mesh = Mesh::new(
+                PrimitiveTopology::TriangleList, 
+                RenderAssetUsages::MAIN_WORLD | RenderAssetUsages::RENDER_WORLD
+            )
+            .with_inserted_attribute(Mesh::ATTRIBUTE_POSITION, vec![
+                Vec3::new(-1.,  1., 0.) + dt,
+                Vec3::new( 1.,  1., 0.) + dt,
+                Vec3::new( 1., -1., 0.) + dt,
+                Vec3::new(-1., -1., 0.) + dt,
+            ])
+            .with_inserted_indices(Indices::U32(vec![0, 3, 1, 1, 3, 2]))
+            .with_computed_normals();
+    
+            *mesh_handle = mesh_asset_server.add(new_mesh);
+    
+            return;
+        }
         
-        let dt = time.delta().as_secs_f32();
-        dt_acc.0 += dt;
-        let dt = dt_acc.0;
-        
-        println!("*********dt: {}", dt);
-
-        let new_mesh = Mesh::new(
-            PrimitiveTopology::TriangleList, 
-            RenderAssetUsages::MAIN_WORLD | RenderAssetUsages::RENDER_WORLD
-        )
-        .with_inserted_attribute(Mesh::ATTRIBUTE_POSITION, vec![
-            Vec3::new(-1. + dt,  1. + dt, 0. + dt),
-            Vec3::new( 1. + dt,  1. + dt, 0. + dt),
-            Vec3::new( 1. + dt, -1. + dt, 0. + dt),
-            Vec3::new(-1. + dt, -1. + dt, 0. + dt),
-        ])
-        .with_inserted_indices(Indices::U32(vec![0, 3, 1, 1, 3, 2]))
-        .with_computed_normals();
-
-        rs.mesh_handle = mesh_asset_server.add(new_mesh);
-
-        return;
 
 
         let shape2d = Mesh2d::circle_8();
