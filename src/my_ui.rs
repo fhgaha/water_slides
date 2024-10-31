@@ -6,7 +6,7 @@ pub struct MyUiPlugin;
 impl Plugin for MyUiPlugin {
     fn build(&self, app: &mut App) {
         app
-            .init_resource::<UiState>()
+            .insert_resource(UiState { t_value: 0., sections_amnt: 8 })
             .add_plugins(EguiPlugin)
             .add_systems(Update, read_slider_value);
     }
@@ -15,7 +15,7 @@ impl Plugin for MyUiPlugin {
 #[derive(Debug, Default, Resource)]
 pub struct UiState {
     pub t_value: f32,
-    pub sections_amnt:  i32
+    pub sections_amnt: i32
 }
 
 fn read_slider_value(

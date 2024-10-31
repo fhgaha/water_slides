@@ -1,12 +1,12 @@
 mod oriented_point;
-mod mesh_2d;
+mod profile_shape;
 
 use std::ops::DerefMut;
 use bevy::{color::palettes::basic::AQUA, prelude::*, render::{mesh::{Indices, PrimitiveTopology}, render_asset::RenderAssetUsages}};
 use bevy_mod_raycast::prelude::*;
 use my_ui::*;
 use oriented_point::OrientedPoint;
-use mesh_2d::*;
+use profile_shape::*;
 use crate::{game::{ControlPointsPlane, Cursor}, my_ui};
 
 pub struct RoadSegmentPlugin;
@@ -76,7 +76,7 @@ impl RoadSegment {
     }
 
     #[allow(dead_code)]
-    fn get_profile_center_and_lines(&self, t: f32, profile_shape: &Mesh2d) -> (OrientedPoint, Vec<(Vec3, Vec3)>) {
+    fn get_profile_center_and_lines(&self, t: f32, profile_shape: &ProfileShape) -> (OrientedPoint, Vec<(Vec3, Vec3)>) {
         let op = self.get_bezier_oriented_point(t);
         let shape_2d = profile_shape;
                 
@@ -155,7 +155,7 @@ fn setup(
 
     //generated mesh
 
-    let custom_texture_handle: Handle<Image> = asset_server.load("textures/array_texture.png");
+    let texture_handle: Handle<Image> = asset_server.load("textures/uv_mapper.png");
     let mesh_handle: Handle<Mesh> = meshes.add(
         Mesh::new(
             PrimitiveTopology::TriangleList, 
@@ -176,7 +176,7 @@ fn setup(
         PbrBundle {
             mesh: mesh_handle.clone(),
             material: materials.add(StandardMaterial {
-                base_color_texture: Some(custom_texture_handle),
+                base_color_texture: Some(texture_handle),
                 ..default()
             }),
             ..default()
@@ -384,7 +384,7 @@ fn draw_profile(
         for mut sphere in moving_spheres.iter_mut() {
             
             let t = ui_state.t_value;
-            let shape2d = Mesh2d::circle_8();
+            let shape2d = ProfileShape::circle_8();
             
             let (center, profile_edges) 
                 = rs.get_profile_center_and_lines(t, &shape2d);
@@ -412,14 +412,18 @@ fn draw_profile(
 
 fn generate_mesh(
     mut road_segments: Query<&mut RoadSegment>,
+    asset_server: Res<AssetServer>,
     mut mesh_asset_server: ResMut<Assets<Mesh>>,
+    mut materials: ResMut<Assets<StandardMaterial>>,
     control_pts: Query<&Transform, With<ControlPointDraggable>>,
-    mut query: Query<(&mut CustomMesh, &mut Handle<Mesh>)>,
+    mut query: Query<(&mut CustomMesh, &mut Handle<Mesh>, &mut Handle<StandardMaterial>)>,
     ui_state: Res<UiState>,
 ) {
     for mut rs in road_segments.iter_mut() {
-        for (mut _custom_mesh, mut mesh_handle) in query.iter_mut(){
-            let shape2d = Mesh2d::circle_8();
+        for (mut _custom_mesh, mut mesh_handle, mut material_handle) in query.iter_mut(){
+            
+            
+            let shape2d = ProfileShape::circle_8();
             
             let control_pts_positions: Vec<Vec3> = rs.pts_ids
                 .iter()
@@ -433,6 +437,7 @@ fn generate_mesh(
             // let edge_ring_count= 8; //min 2
             let edge_ring_count= ui_state.sections_amnt as usize;
             let mut verts = Vec::<Vec3>::new(); 
+            let mut uvs = Vec::<Vec2>::new();
     
             for ring in min_ring_count..=edge_ring_count {
                 let t: f32 = ring as f32 / (edge_ring_count - 1) as f32;
@@ -442,6 +447,7 @@ fn generate_mesh(
                 for i in 0..shape2d.vertex_count() {
                     let world_pos = op.local_to_world_pos(shape2d.vertices[i].point);
                     verts.push(world_pos);
+                    uvs.push(Vec2::new(shape2d.vertices[i].u, t));
                 }
             }
             
@@ -495,6 +501,7 @@ fn generate_mesh(
             )
             .with_inserted_attribute(Mesh::ATTRIBUTE_POSITION, verts)
             .with_inserted_indices(Indices::U32(tri_indices))
+            .with_inserted_attribute(Mesh::ATTRIBUTE_UV_0, uvs)
             .with_computed_normals();
     
             *mesh_handle = mesh_asset_server.add(new_mesh);
