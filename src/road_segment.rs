@@ -1,7 +1,7 @@
 mod oriented_point;
 mod mesh_2d;
 
-use std::{default, ops::DerefMut};
+use std::ops::DerefMut;
 use bevy::{color::palettes::basic::AQUA, prelude::*, render::{mesh::{Indices, PrimitiveTopology}, render_asset::RenderAssetUsages}};
 use bevy_mod_raycast::prelude::*;
 use my_ui::*;
@@ -34,7 +34,6 @@ impl Plugin for RoadSegmentPlugin {
 struct RoadSegment {
     curve: CubicBezier<Vec3>,
     pts_ids: [Entity; 4],
-    mesh_handle: Handle<Mesh>
 }
 
 impl Default for RoadSegment {
@@ -42,7 +41,6 @@ impl Default for RoadSegment {
         Self{
             curve: CubicBezier::new([[Vec3::INFINITY, Vec3::INFINITY, Vec3::INFINITY, Vec3::INFINITY]]),
             pts_ids: [Entity::from_bits(0); 4],
-            mesh_handle: Handle::<Mesh>::default(),
         }
     }
 }
@@ -158,10 +156,7 @@ fn setup(
 
     //generated mesh
 
-    // Import the custom texture.
     let custom_texture_handle: Handle<Image> = asset_server.load("textures/array_texture.png");
-    
-    // Create and save a handle to the mesh.
     let mesh_handle: Handle<Mesh> = meshes.add(
         Mesh::new(
             PrimitiveTopology::TriangleList, 
@@ -176,8 +171,7 @@ fn setup(
         .with_inserted_indices(Indices::U32(vec![0, 3, 1, 1, 3, 2]))
         .with_computed_normals()
     );
-    // let mesh_handle_id = mesh_handle.id();
-    
+
     // Render the mesh with the custom texture using a PbrBundle, add the marker.
     commands.spawn((
         PbrBundle {
@@ -198,12 +192,9 @@ fn setup(
                 RoadSegment {
                     curve: CubicBezier::new([positions]),
                     pts_ids: control_pts_ids,
-                    mesh_handle: mesh_handle.clone()
                 }
         ))
         .push_children(&control_pts_ids);
-
-    commands.insert_resource(TempStoreDt(0.));
 }
 
 fn update_states(
@@ -330,7 +321,7 @@ fn draw_curve_using_road_segment_other_curve_options(
     transforms: Query<&Transform>,    
     mut gizmos: Gizmos,
 ) {
-    for mut rs in road_segments.iter_mut() {
+    for rs in road_segments.iter_mut() {
         
          let positions: [Vec3; 4] = rs.pts_ids
             .iter()
@@ -447,50 +438,16 @@ fn draw_profile(
     }
 }
 
-#[derive(Resource)]
-struct TempStoreDt(f32);
-
 fn generate_mesh(
     mut road_segments: Query<&mut RoadSegment>,
     mut mesh_asset_server: ResMut<Assets<Mesh>>,
-    // mut query: Query<&mut Transform, With<CustomUV>>,
     control_pts: Query<&Transform, With<ControlPointDraggable>>,
-    time: Res<Time>,
-    mut dt_acc: Option<ResMut<TempStoreDt>>,
     mut query: Query<(&mut CustomMesh, &mut Handle<Mesh>)>,
 ) {
     for mut rs in road_segments.iter_mut() {
-        for (mut custom_mesh, mut mesh_handle) in query.iter_mut(){
-                
-        ////Mesh plane
-        //     let Some(dt_acc) = &mut dt_acc else {return;};
-            
-        //     let dt = time.delta().as_secs_f32();
-        //     dt_acc.0 += dt;
-        //     let dt = dt_acc.0;
-            
-        //     let new_mesh = Mesh::new(
-        //         PrimitiveTopology::TriangleList, 
-        //         RenderAssetUsages::MAIN_WORLD | RenderAssetUsages::RENDER_WORLD
-        //     )
-        //     .with_inserted_attribute(Mesh::ATTRIBUTE_POSITION, vec![
-        //         Vec3::new(-1.,  1., 0.) + dt,
-        //         Vec3::new( 1.,  1., 0.) + dt,
-        //         Vec3::new( 1., -1., 0.) + dt,
-        //         Vec3::new(-1., -1., 0.) + dt,
-        //     ])
-        //     .with_inserted_indices(Indices::U32(vec![0, 3, 1, 1, 3, 2]))
-        //     .with_computed_normals();
-    
-        //     *mesh_handle = mesh_asset_server.add(new_mesh);
-    
-        //     return;
-        // }
-        
-
-    
+        for (mut _custom_mesh, mut mesh_handle) in query.iter_mut(){
             let shape2d = Mesh2d::circle_8();
-    
+            
             let control_pts_positions: Vec<Vec3> = rs.pts_ids
                 .iter()
                 .map(|pt_id| control_pts.get(*pt_id).unwrap().translation)
@@ -555,15 +512,6 @@ fn generate_mesh(
                     tri_indices.push(curr_a as u32);
                     tri_indices.push(next_b as u32);
                     tri_indices.push(next_a as u32);
-    
-                    // freya's
-                    // tri_indices.push(curr_a as u32);
-                    // tri_indices.push(next_a as u32);
-                    // tri_indices.push(next_b as u32);
-    
-                    // tri_indices.push(curr_a as u32);
-                    // tri_indices.push(next_b as u32);
-                    // tri_indices.push(curr_b as u32);
                 }
             }
             

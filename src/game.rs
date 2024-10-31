@@ -11,6 +11,7 @@ use bevy_panorbit_camera::*;
 use bevy_rts_camera::*;
 use crate::my_ui::MyUiPlugin;
 use crate::road_segment::RoadSegmentPlugin;
+use crate::fps::FpsPlugin;
 
 pub struct GamePlugin;
 
@@ -34,7 +35,8 @@ impl Plugin for GamePlugin {
                 }),
                 PanOrbitCameraPlugin,
                 RoadSegmentPlugin,
-                MyUiPlugin
+                MyUiPlugin,
+                FpsPlugin,
             ))
             .add_systems(
                 Startup,

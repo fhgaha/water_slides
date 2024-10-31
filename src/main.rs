@@ -1,6 +1,7 @@
 mod game;
 mod road_segment;
 mod my_ui;
+mod fps;
 
 use bevy::prelude::*;
 
