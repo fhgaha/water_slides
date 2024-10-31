@@ -92,6 +92,25 @@ impl RoadSegment {
 
         (op, line_pairs)
     }
+    
+    fn get_approx_len(&self) -> f32 {
+        let prescision: usize = 8;
+        let mut points: Vec<Vec3> = vec![];
+        
+        for i in 0..prescision {
+            let t = i as f32 / (prescision - 1) as f32;
+            points.push(self.get_bezier_oriented_point(t).pos);
+        }
+        
+        let mut dist: f32 = 0.;
+        for i in 0..(prescision - 1) {
+            let a = points[i];
+            let b = points[i + 1];
+            dist += Vec3::distance(a, b);
+        }
+        
+        dist
+    }
 }
 
 #[derive(PartialEq)]
@@ -329,9 +348,9 @@ fn draw_curve_using_road_segment_other_curve_options(
             .try_into()
             .unwrap();
 
-        // let curve = CubicBezier::new([positions]);
+        let curve = CubicBezier::new([positions]);
         // let curve = CubicBSpline::new(positions);
-        let curve = CubicCardinalSpline::new(0.7, positions); //this looks good
+        // let curve = CubicCardinalSpline::new(0.7, positions); //this looks good
         // let curve = CubicHermite::new(positions, [Vec3::splat(10.); 4]);
 
         // let weights = [10.0, 10.0, 20.0, 10.0];
@@ -422,7 +441,6 @@ fn generate_mesh(
     for mut rs in road_segments.iter_mut() {
         for (mut _custom_mesh, mut mesh_handle, mut material_handle) in query.iter_mut(){
             
-            
             let shape2d = ProfileShape::circle_8();
             
             let control_pts_positions: Vec<Vec3> = rs.pts_ids
@@ -433,6 +451,7 @@ fn generate_mesh(
             rs.calc_and_store_curve_return_curve_pts(&control_pts_positions, 8);
     
             // Vertices
+            let u_span = shape2d.calc_u_span();
             let min_ring_count = 0;
             // let edge_ring_count= 8; //min 2
             let edge_ring_count= ui_state.sections_amnt as usize;
@@ -449,7 +468,9 @@ fn generate_mesh(
                 for i in 0..shape2d.vertex_count() {
                     verts.push(op.local_to_world_pos(shape2d.vertices[i].point));
                     normals.push(op.local_to_world_vec(shape2d.vertices[i].normal));
-                    uvs.push(Vec2::new(shape2d.vertices[i].u, t));
+                    //coefficient to uniform uvs
+                    let coeff = rs.get_approx_len()/u_span;
+                    uvs.push(Vec2::new(shape2d.vertices[i].u , t * coeff));
                 }
             }
             

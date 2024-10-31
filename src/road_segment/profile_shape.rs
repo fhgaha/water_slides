@@ -22,6 +22,19 @@ impl ProfileShape {
 	pub fn line_count(&self) -> usize {
 		self.line_indices.len()
 	}
+	
+	//length of this shape. all lines lengths summed up in u's
+	pub fn calc_u_span(&self) -> f32 {
+		let mut dist: f32 = 0.;
+		let line_count = self.line_count();
+		for i in (0..line_count).step_by(2) {
+			let u_a = self.vertices[self.line_indices[i]].point;
+			let u_b = self.vertices[self.line_indices[i + 1]].point;
+			dist += (u_a - u_b).length();
+		}
+		
+		dist
+	}
 
 	pub fn circle_8 () -> Self {
 		let sqrt = 1./f32::sqrt(2.);
