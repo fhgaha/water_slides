@@ -436,7 +436,9 @@ fn generate_mesh(
             let min_ring_count = 0;
             // let edge_ring_count= 8; //min 2
             let edge_ring_count= ui_state.sections_amnt as usize;
-            let mut verts = Vec::<Vec3>::new(); 
+            let mut verts = Vec::<Vec3>::new();
+            //normals not used but let them be to show how are calculated
+            let mut normals = Vec::<Vec3>::new();   
             let mut uvs = Vec::<Vec2>::new();
     
             for ring in min_ring_count..=edge_ring_count {
@@ -445,8 +447,8 @@ fn generate_mesh(
                 let op = rs.get_bezier_oriented_point(t);
     
                 for i in 0..shape2d.vertex_count() {
-                    let world_pos = op.local_to_world_pos(shape2d.vertices[i].point);
-                    verts.push(world_pos);
+                    verts.push(op.local_to_world_pos(shape2d.vertices[i].point));
+                    normals.push(op.local_to_world_vec(shape2d.vertices[i].normal));
                     uvs.push(Vec2::new(shape2d.vertices[i].u, t));
                 }
             }

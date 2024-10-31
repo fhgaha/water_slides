@@ -19,7 +19,7 @@ impl OrientedPoint {
         self.pos + world_pos
     }
 
-    pub fn local_to_world_vect(self, local_space_pos: Vec2) -> Vec3 {
+    pub fn local_to_world_vec(self, local_space_pos: Vec2) -> Vec3 {
         self.rot * local_space_pos.extend(0.)
     }
 }
