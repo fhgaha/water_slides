@@ -14,7 +14,8 @@ impl Plugin for MyUiPlugin {
 
 #[derive(Debug, Default, Resource)]
 pub struct UiState {
-    pub value: f32,
+    pub t_value: f32,
+    pub sections_amnt:  i32
 }
 
 fn read_slider_value(
@@ -24,7 +25,10 @@ fn read_slider_value(
     egui::Window::new("Hello").show(
         contexts.ctx_mut(), 
         |ui| {
-            ui.add(egui::Slider::new(&mut ui_state.value, 0.0..=1.0).text("t value"));
+            ui.add(egui::Slider::new(&mut ui_state.t_value, 0.0..=1.0)
+                .text("t value"));
+            ui.add(egui::Slider::new(&mut ui_state.sections_amnt, 2..=120)
+                .text("Sections amnt"));
         }
     );
 }

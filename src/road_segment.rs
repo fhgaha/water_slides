@@ -20,11 +20,10 @@ impl Plugin for RoadSegmentPlugin {
                 (
                     update_states, 
                     update_positions, 
-                    // draw_spline
+                    // draw_spline,
                     draw_curve_using_road_segment,
-                    // move_shpere_along_curve,
-                    // draw_profile,
-                    generate_mesh
+                    draw_profile,
+                    generate_mesh,
                 ).chain()
         );
     }
@@ -370,34 +369,6 @@ fn sphere_along_curve_move_with_time(
     }
 }
 
-fn move_shpere_along_curve(
-    ui_state: Res<UiState>,
-    road_segments: Query<&RoadSegment>,
-    mut moving_spheres: Query<&mut Transform, With<MovingSphere>>,
-    mut gizmos: Gizmos
-){
-    for rs in road_segments.iter() {
-        let op = rs.get_bezier_oriented_point(ui_state.value);
-
-        for mut sphere in moving_spheres.iter_mut() {
-            sphere.translation = op.pos;
-            //lock Y for this quat when you dont want the thing to rotate around movement direction
-            sphere.rotation = op.rot;
-
-            gizmos.axes(*sphere.deref_mut(), 4.);
-
-            const RED: Srgba = bevy::color::palettes::basic::RED;
-
-            draw_shape(&mut gizmos, op, Vec2::X *  1.);
-            draw_shape(&mut gizmos, op, Vec2::X *  2.);
-            draw_shape(&mut gizmos, op, Vec2::X * -1.);
-            draw_shape(&mut gizmos, op, Vec2::X * -2.);
-            draw_shape(&mut gizmos, op, Vec2::Y *  1.);
-            draw_shape(&mut gizmos, op, Vec2::Y *  2.);
-        }
-    }
-}
-
 fn draw_shape(gizmos: &mut Gizmos<'_, '_>, op: OrientedPoint, local_space_pos: Vec2) {
     const RED: Srgba = bevy::color::palettes::basic::RED;
     gizmos.sphere(op.local_to_world_pos(local_space_pos), op.rot, 0.2, RED).resolution(8);
@@ -412,7 +383,7 @@ fn draw_profile(
     for rs in road_segments.iter() {
         for mut sphere in moving_spheres.iter_mut() {
             
-            let t = ui_state.value;
+            let t = ui_state.t_value;
             let shape2d = Mesh2d::circle_8();
             
             let (center, profile_edges) 
@@ -425,6 +396,7 @@ fn draw_profile(
             sphere.translation = center.pos;
             //lock Y for this quat when you dont want the thing to rotate around movement direction
             sphere.rotation = center.rot;
+            
             gizmos.axes(*sphere.deref_mut(), 4.);
          }
     
@@ -443,6 +415,7 @@ fn generate_mesh(
     mut mesh_asset_server: ResMut<Assets<Mesh>>,
     control_pts: Query<&Transform, With<ControlPointDraggable>>,
     mut query: Query<(&mut CustomMesh, &mut Handle<Mesh>)>,
+    ui_state: Res<UiState>,
 ) {
     for mut rs in road_segments.iter_mut() {
         for (mut _custom_mesh, mut mesh_handle) in query.iter_mut(){
@@ -457,10 +430,11 @@ fn generate_mesh(
     
             // Vertices
             let min_ring_count = 0;
-            let edge_ring_count= 8; //min 2
+            // let edge_ring_count= 8; //min 2
+            let edge_ring_count= ui_state.sections_amnt as usize;
             let mut verts = Vec::<Vec3>::new(); 
     
-            for ring in min_ring_count..edge_ring_count {
+            for ring in min_ring_count..=edge_ring_count {
                 let t: f32 = ring as f32 / (edge_ring_count - 1) as f32;
     
                 let op = rs.get_bezier_oriented_point(t);
