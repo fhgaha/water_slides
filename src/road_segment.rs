@@ -462,176 +462,120 @@ fn generate_mesh(
     for mut rs in road_segments.iter_mut() {
         for (mut custom_mesh, mut mesh_handle) in query.iter_mut(){
                 
-            //this thing isnt even used
-            let Some(dt_acc) = &mut dt_acc else {return;};
+        ////Mesh plane
+        //     let Some(dt_acc) = &mut dt_acc else {return;};
             
-            let dt = time.delta().as_secs_f32();
-            dt_acc.0 += dt;
-            let dt = dt_acc.0;
+        //     let dt = time.delta().as_secs_f32();
+        //     dt_acc.0 += dt;
+        //     let dt = dt_acc.0;
+            
+        //     let new_mesh = Mesh::new(
+        //         PrimitiveTopology::TriangleList, 
+        //         RenderAssetUsages::MAIN_WORLD | RenderAssetUsages::RENDER_WORLD
+        //     )
+        //     .with_inserted_attribute(Mesh::ATTRIBUTE_POSITION, vec![
+        //         Vec3::new(-1.,  1., 0.) + dt,
+        //         Vec3::new( 1.,  1., 0.) + dt,
+        //         Vec3::new( 1., -1., 0.) + dt,
+        //         Vec3::new(-1., -1., 0.) + dt,
+        //     ])
+        //     .with_inserted_indices(Indices::U32(vec![0, 3, 1, 1, 3, 2]))
+        //     .with_computed_normals();
+    
+        //     *mesh_handle = mesh_asset_server.add(new_mesh);
+    
+        //     return;
+        // }
+        
+
+    
+            let shape2d = Mesh2d::circle_8();
+    
+            let control_pts_positions: Vec<Vec3> = rs.pts_ids
+                .iter()
+                .map(|pt_id| control_pts.get(*pt_id).unwrap().translation)
+                .collect();
+            
+            rs.calc_and_store_curve_return_curve_pts(&control_pts_positions, 8);
+    
+            // Vertices
+            let min_ring_count = 0;
+            let edge_ring_count= 8; //min 2
+            let mut verts = Vec::<Vec3>::new(); 
+    
+            for ring in min_ring_count..edge_ring_count {
+                let t: f32 = ring as f32 / (edge_ring_count - 1) as f32;
+    
+                let op = rs.get_bezier_oriented_point(t);
+    
+                for i in 0..shape2d.vertex_count() {
+                    let world_pos = op.local_to_world_pos(shape2d.vertices[i].point);
+                    verts.push(world_pos);
+                }
+            }
+            
+            //
+            //  A                   B
+            //  .___________________.
+            //  |    ring next      |
+            //  |                /  |
+            //  |             /     |
+            //  |          /        |
+            //  |       /           |
+            //  |    /              |
+            //  | /                 |
+            //  .___________________.
+            //  A    ring curr      B
+            //
+            // should be counter-clockwise in bevy
+            //
+    
+            // Triangles
+            let mut tri_indices = Vec::<u32>::new();
+    
+            for ring in 0..(edge_ring_count-1) {
+                
+                let root_idx = ring * shape2d.vertex_count();
+                let root_idx_next = (ring + 1) * shape2d.vertex_count();
+    
+                for line in (0..shape2d.line_count()).step_by(2) {
+                    
+                    let line_idx_a = shape2d.line_indices[line];
+                    let line_idx_b = shape2d.line_indices[line + 1];
+                    
+                    let curr_a = root_idx + line_idx_a;
+                    let curr_b = root_idx + line_idx_b;
+                    let next_a = root_idx_next + line_idx_a;
+                    let next_b = root_idx_next + line_idx_b;
+    
+                    tri_indices.push(curr_a as u32);
+                    tri_indices.push(curr_b as u32);
+                    tri_indices.push(next_b as u32);
+    
+                    tri_indices.push(curr_a as u32);
+                    tri_indices.push(next_b as u32);
+                    tri_indices.push(next_a as u32);
+    
+                    // freya's
+                    // tri_indices.push(curr_a as u32);
+                    // tri_indices.push(next_a as u32);
+                    // tri_indices.push(next_b as u32);
+    
+                    // tri_indices.push(curr_a as u32);
+                    // tri_indices.push(next_b as u32);
+                    // tri_indices.push(curr_b as u32);
+                }
+            }
             
             let new_mesh = Mesh::new(
                 PrimitiveTopology::TriangleList, 
                 RenderAssetUsages::MAIN_WORLD | RenderAssetUsages::RENDER_WORLD
             )
-            .with_inserted_attribute(Mesh::ATTRIBUTE_POSITION, vec![
-                Vec3::new(-1.,  1., 0.) + dt,
-                Vec3::new( 1.,  1., 0.) + dt,
-                Vec3::new( 1., -1., 0.) + dt,
-                Vec3::new(-1., -1., 0.) + dt,
-            ])
-            .with_inserted_indices(Indices::U32(vec![0, 3, 1, 1, 3, 2]))
+            .with_inserted_attribute(Mesh::ATTRIBUTE_POSITION, verts)
+            .with_inserted_indices(Indices::U32(tri_indices))
             .with_computed_normals();
     
             *mesh_handle = mesh_asset_server.add(new_mesh);
-    
-            return;
         }
-        
-
-
-        let shape2d = Mesh2d::circle_8();
-
-        let control_pts_positions: Vec<Vec3> = rs.pts_ids
-            .iter()
-            .map(|pt_id| control_pts.get(*pt_id).unwrap().translation)
-            .collect();
-        
-        rs.calc_and_store_curve_return_curve_pts(&control_pts_positions, 8);
-
-        // Vertices
-        let min_ring_cnt = 2;
-        let edge_ring_count= 3;
-        let mut verts = Vec::<Vec3>::new(); 
-
-        for ring in min_ring_cnt..edge_ring_count {
-            let t: f32 = ring as f32 / (edge_ring_count - 1) as f32;
-
-            let op = rs.get_bezier_oriented_point(t);
-
-            for i in 0..shape2d.vertex_count() {
-                let world_pos = op.local_to_world_pos(shape2d.vertices[i].point);
-                verts.push(world_pos);
-            }
-        }
-        
-        //
-        //  A                   B
-        //  .___________________.
-        //  |    ring next      |
-        //  |                /  |
-        //  |             /     |
-        //  |          /        |
-        //  |       /           |
-        //  |    /              |
-        //  | /                 |
-        //  .___________________.
-        //  A    ring curr      B
-        //
-        // should be counter-clockwise in bevy
-        //
-
-        // Triangles
-        let mut tri_indices = Vec::<u32>::new();
-
-        for ring in 0..(edge_ring_count-1) {
-            
-            let root_idx = ring * shape2d.vertex_count();
-            let root_idx_next = (ring + 1) * shape2d.vertex_count();
-
-            for line in (0..shape2d.line_count()).step_by(2) {
-                
-                let line_idx_a = shape2d.line_indices[line];
-                let line_idx_b = shape2d.line_indices[line + 1];
-                
-                let curr_a = root_idx + line_idx_a;
-                let curr_b = root_idx + line_idx_b;
-                let next_a = root_idx_next + line_idx_a;
-                let next_b = root_idx_next + line_idx_b;
-
-                tri_indices.push(curr_a as u32);
-                tri_indices.push(curr_b as u32);
-                tri_indices.push(next_b as u32);
-
-                tri_indices.push(curr_a as u32);
-                tri_indices.push(next_b as u32);
-                tri_indices.push(next_a as u32);
-
-                // freya's
-                // tri_indices.push(curr_a as u32);
-                // tri_indices.push(next_a as u32);
-                // tri_indices.push(next_b as u32);
-
-                // tri_indices.push(curr_a as u32);
-                // tri_indices.push(next_b as u32);
-                // tri_indices.push(curr_b as u32);
-            }
-        }
-
-        // 16 pts per ring
-        // 8 rings
-        // 16 * 8 = 128
-        // but we go from ring 2 to 8 exclusively so 128 - 16 * 2 = 128 - 32 = 96
-        // 6 rings total, so 16 * 6 = 96 again 
-        // verts connect
-        // 
-        // tri indeces should be:
-        // from one ring to next ring - 16 tris per two rings, so 16 * 2 = 32 tri indeses
-        // is:
-        // connections from 7 cur rings to the next ring 
-        // 7 * 32 = 224 tri indeces should be
-        // 8 lines, each has 2 tris, each tri has 3 indeces. so 3 * 2 * 8 = 48 indeces per connection
-        // 48 * 7 = 336 indeces
-        // tri indeces look correct
-
-
-        // println!("== verts len: {}, tris.len: {}", verts.len(), tri_indices.len());
-
-
-
-
-        //use verts and tris
-        // if let Some(mesh_id) = rs.mesh_id {
-        //     let mesh = mesh_asset_server.get_mut(mesh_id).unwrap();
-
-            //this causes lld error
-            // if verts.len() == 96 && tri_indices.len() == 336 {
-            // mesh.remove_attribute(Mesh::ATTRIBUTE_POSITION);
-            // mesh.remove_indices();
-            // mesh.remove_attribute(Mesh::ATTRIBUTE_NORMAL);
-
-            // mesh.insert_attribute(Mesh::ATTRIBUTE_POSITION, verts);
-            // mesh.insert_indices(Indices::U32(tri_indices));
-            // mesh.compute_normals();
-            // }
-
-            // mesh.remove_attribute(Mesh::ATTRIBUTE_POSITION);
-            // mesh.remove_indices();
-            
-            // mesh.insert_attribute(Mesh::ATTRIBUTE_POSITION, verts);
-            // // vec![
-            // //     Vec3::X * 10.,
-            // //     Vec3::X * 10.,
-            // //     Vec3::X * 10.,
-            // //     Vec3::X * 10.,
-            // // ]
-
-            // mesh.insert_indices(Indices::U32(tri_indices));
-            // vec![0, 3, 1, 1, 3, 2]
-
-            // mesh.compute_normals();
-            // mesh.compute_flat_normals();
-            // mesh.compute_smooth_normals();
-
-            //check changes
-            // let pos_attr = mesh.attribute_mut(Mesh::ATTRIBUTE_POSITION).unwrap();
-            // let VertexAttributeValues::Float32x3(pos_attr) = pos_attr else {return;};
-
-            // for p in pos_attr.iter_mut() {
-            //     println!("p: {:?}", p);
-            // }
-
-            // println!("====");
-        // }
-
     }
 }
