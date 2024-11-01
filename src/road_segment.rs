@@ -2,7 +2,16 @@ mod oriented_point;
 mod profile_shape;
 
 use std::ops::DerefMut;
-use bevy::{color::palettes::basic::AQUA, prelude::*, render::{mesh::{Indices, PrimitiveTopology}, render_asset::RenderAssetUsages}};
+use bevy::{
+    color::palettes::css::{AQUA, YELLOW}, 
+    prelude::*, 
+    render::{
+        mesh::{
+            Indices, PrimitiveTopology
+        }, 
+        render_asset::RenderAssetUsages
+    }
+};
 use bevy_mod_raycast::prelude::*;
 use my_ui::*;
 use oriented_point::OrientedPoint;
@@ -195,7 +204,8 @@ fn setup(
         PbrBundle {
             mesh: mesh_handle.clone(),
             material: materials.add(StandardMaterial {
-                base_color_texture: Some(texture_handle),
+                // base_color_texture: Some(texture_handle),
+                base_color: Color::Srgba(AQUA), 
                 ..default()
             }),
             ..default()
@@ -338,6 +348,7 @@ fn draw_curve_using_road_segment_other_curve_options(
     mut road_segments: Query<&mut RoadSegment>,
     transforms: Query<&Transform>,    
     mut gizmos: Gizmos,
+    ui_state: Res<UiState>,
 ) {
     for rs in road_segments.iter_mut() {
         
@@ -358,9 +369,11 @@ fn draw_curve_using_road_segment_other_curve_options(
         // let curve = CubicNurbs::new(positions, Some(weights), Some(knots))
         //     .expect("NURBS construction failed!");
 
+        let subdivisions: usize = ui_state.sections_amnt.try_into().unwrap();
+
         let positions = curve
             .to_curve()
-            .iter_positions(100)
+            .iter_positions(subdivisions)
             .collect::<Vec<Vec3>>();
 
         // let positions = rs.curve_pts(&transforms, 100);
@@ -388,6 +401,7 @@ fn sphere_along_curve_move_with_time(
     }
 }
 
+#[allow(dead_code)]
 fn draw_shape(gizmos: &mut Gizmos<'_, '_>, op: OrientedPoint, local_space_pos: Vec2) {
     const RED: Srgba = bevy::color::palettes::basic::RED;
     gizmos.sphere(op.local_to_world_pos(local_space_pos), op.rot, 0.2, RED).resolution(8);
@@ -409,7 +423,7 @@ fn draw_profile(
                 = rs.get_profile_center_and_lines(t, &shape2d);
 
             for (from, to) in profile_edges {
-                gizmos.line(from, to, AQUA);
+                gizmos.line(from, to, Color::Srgba(YELLOW));
             }
 
             sphere.translation = center.pos;
@@ -434,10 +448,12 @@ fn generate_mesh(
     asset_server: Res<AssetServer>,
     mut mesh_asset_server: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
-    control_pts: Query<&Transform, With<ControlPointDraggable>>,
+    mut control_pts: Query<&mut Transform, With<ControlPointDraggable>>,
     mut query: Query<(&mut CustomMesh, &mut Handle<Mesh>, &mut Handle<StandardMaterial>)>,
     ui_state: Res<UiState>,
 ) {
+    if control_pts.iter_mut().all(|p| !p.is_changed()) {return;};
+
     for mut rs in road_segments.iter_mut() {
         for (mut _custom_mesh, mut mesh_handle, mut material_handle) in query.iter_mut(){
             
@@ -448,28 +464,31 @@ fn generate_mesh(
                 .map(|pt_id| control_pts.get(*pt_id).unwrap().translation)
                 .collect();
             
-            rs.calc_and_store_curve_return_curve_pts(&control_pts_positions, 8);
+            let sections_amnt = ui_state.sections_amnt.try_into().unwrap();
+
+            rs.calc_and_store_curve_return_curve_pts(&control_pts_positions, sections_amnt);
     
             // Vertices
-            let u_span = shape2d.calc_u_span();
-            let min_ring_count = 0;
-            // let edge_ring_count= 8; //min 2
-            let edge_ring_count= ui_state.sections_amnt as usize;
+            //needed for uniforming uvs. not used here
+            // let u_span = shape2d.calc_u_span();
+            let edge_ring_count= sections_amnt;
+
             let mut verts = Vec::<Vec3>::new();
             //normals not used but let them be to show how are calculated
             let mut normals = Vec::<Vec3>::new();   
             let mut uvs = Vec::<Vec2>::new();
     
-            for ring in min_ring_count..=edge_ring_count {
+            for ring in 0..=edge_ring_count {
+                
                 let t: f32 = ring as f32 / (edge_ring_count - 1) as f32;
-    
                 let op = rs.get_bezier_oriented_point(t);
     
                 for i in 0..shape2d.vertex_count() {
                     verts.push(op.local_to_world_pos(shape2d.vertices[i].point));
                     normals.push(op.local_to_world_vec(shape2d.vertices[i].normal));
-                    //coefficient to uniform uvs
-                    let coeff = rs.get_approx_len()/u_span;
+                    //coefficient to uniform uvs. doesnt work, not used.
+                    // let coeff = rs.get_approx_len()/u_span;
+                    let coeff = 1.;
                     uvs.push(Vec2::new(shape2d.vertices[i].u , t * coeff));
                 }
             }
@@ -520,11 +539,11 @@ fn generate_mesh(
             
             let new_mesh = Mesh::new(
                 PrimitiveTopology::TriangleList, 
-                RenderAssetUsages::MAIN_WORLD | RenderAssetUsages::RENDER_WORLD
+                RenderAssetUsages::MAIN_WORLD | RenderAssetUsages::RENDER_WORLD,
             )
             .with_inserted_attribute(Mesh::ATTRIBUTE_POSITION, verts)
             .with_inserted_indices(Indices::U32(tri_indices))
-            .with_inserted_attribute(Mesh::ATTRIBUTE_UV_0, uvs)
+            // .with_inserted_attribute(Mesh::ATTRIBUTE_UV_0, uvs)
             .with_computed_normals();
     
             *mesh_handle = mesh_asset_server.add(new_mesh);

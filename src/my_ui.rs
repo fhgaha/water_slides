@@ -18,6 +18,10 @@ pub struct UiState {
     pub sections_amnt: i32
 }
 
+pub struct UiForTranslation {
+
+}
+
 fn read_slider_value(
     mut contexts: EguiContexts,
     mut ui_state: ResMut<UiState>,
@@ -29,6 +33,12 @@ fn read_slider_value(
                 .text("t value"));
             ui.add(egui::Slider::new(&mut ui_state.sections_amnt, 2..=120)
                 .text("Sections amnt"));
+            ui.separator();
+            // ui.add(egui::Label::new("CP1 pos:"));
+            // ui.add(egui::Label::new("x:"));
+            // ui.add(egui::Label::new("y:"));
+            // ui.add(egui::Label::new("z:"));
+            
         }
     );
 }

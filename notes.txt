@@ -7,6 +7,9 @@
 
 --  Disable cargo check on build to speed up the thing:
 	set "rust-analyzer.checkOnSave.extraArgs": ["--target-dir", "/path/to/proect/target/check"]
+-- Offline docs:
+   -- of the project : `cargo doc --open`
+   -- of rust :        `rustup doc`
 
  ______   ______     _____     ______    
 /\__  _\ /\  __ \   /\  __-.  /\  __ \   
@@ -15,8 +18,12 @@
     \/_/   \/_____/   \/____/   \/_____/ 
                                          
 - Draw cylinder tubes
+  - Lock z rotation
+  - Have tubes with different colors
 - Draw waterpool bellow
 - Let people slide down there
 - Make scale increase on every next level
 
-Goal is to reach amount of people sliding to the pool per second or something like that
+Goal: 
+  -- to reach amount of people sliding to the pool per second like in Freeways
+  -- to drop as much people as possitble in the pool for a period of time
