@@ -38,9 +38,9 @@ bevy = { version = "0.14.2", default-features = false,  features = [
 	"sysinfo_plugin",
 ] }
 bevy_mod_raycast = "0.18.0"
-bevy_lunex = { version = "0.2.4" }
 bevy_rts_camera = { path = "crates/bevy_rts_camera" }
-bevy_panorbit_camera = {path = "crates/bevy_panorbit_camera"}
+bevy_panorbit_camera = { path = "crates/bevy_panorbit_camera" }
+bevy-inspector-egui = { path = "crates/bevy-inspector-egui/crates/bevy-inspector-egui" }
 bevy_dev_tools = "0.14.2"
 bevy_egui = "0.30.0"
 

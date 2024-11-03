@@ -1,6 +1,7 @@
 mod oriented_point;
 mod profile_shape;
 
+use core::str;
 use std::ops::DerefMut;
 use bevy::{
     color::palettes::css::{AQUA, YELLOW}, 
@@ -42,6 +43,8 @@ impl Plugin for RoadSegmentPlugin {
 struct RoadSegment {
     curve: CubicBezier<Vec3>,
     pts_ids: [Entity; 4],
+    start_pt_id: Option<Entity>,
+    end_pt_id: Option<Entity>,
 }
 
 impl Default for RoadSegment {
@@ -49,6 +52,8 @@ impl Default for RoadSegment {
         Self{
             curve: CubicBezier::new([[Vec3::INFINITY, Vec3::INFINITY, Vec3::INFINITY, Vec3::INFINITY]]),
             pts_ids: [Entity::from_bits(0); 4],
+            start_pt_id: None,
+            end_pt_id: None 
         }
     }
 }
@@ -103,16 +108,16 @@ impl RoadSegment {
     }
     
     fn get_approx_len(&self) -> f32 {
-        let prescision: usize = 8;
+        const PRESCISION: usize = 8;
         let mut points: Vec<Vec3> = vec![];
         
-        for i in 0..prescision {
-            let t = i as f32 / (prescision - 1) as f32;
+        for i in 0..PRESCISION {
+            let t = i as f32 / (PRESCISION - 1) as f32;
             points.push(self.get_bezier_oriented_point(t).pos);
         }
         
         let mut dist: f32 = 0.;
-        for i in 0..(prescision - 1) {
+        for i in 0..(PRESCISION - 1) {
             let a = points[i];
             let b = points[i + 1];
             dist += Vec3::distance(a, b);
@@ -154,12 +159,30 @@ fn setup(
     ];
 
     //control points
-    let control_pts_ids: [Entity; 4] = positions.map(|p|{
-        commands.spawn((
+    // let control_pts_ids: [Entity; 4] = positions.map(|p|{
+    //     commands.spawn((
+    //         PbrBundle {
+    //             mesh: meshes.add(Sphere::new(1.)),
+    //             material: materials.add(Color::srgba(1., 1., 1., 0.2)),
+    //             transform: Transform::from_translation(p),
+    //             ..default()
+    //         },
+    //         ControlPointDraggable {
+    //             state: ControlPointState::None,
+    //         },
+    //     ))
+    //     .id()
+    // });
+
+    let mut control_pts_ids: [Entity; 4] = [Entity::PLACEHOLDER; 4];
+
+    for i in 0..positions.len() {
+        control_pts_ids[i] = commands.spawn((
+            Name::new(format!("Control Point {i}")),
             PbrBundle {
                 mesh: meshes.add(Sphere::new(1.)),
                 material: materials.add(Color::srgba(1., 1., 1., 0.2)),
-                transform: Transform::from_translation(p),
+                transform: Transform::from_translation(positions[i]),
                 ..default()
             },
             ControlPointDraggable {
@@ -167,7 +190,7 @@ fn setup(
             },
         ))
         .id()
-    });
+    }
 
     //moving sphere
     commands.spawn((
@@ -220,6 +243,8 @@ fn setup(
                 RoadSegment {
                     curve: CubicBezier::new([positions]),
                     pts_ids: control_pts_ids,
+                    start_pt_id: Some(control_pts_ids[0]),
+                    end_pt_id: Some(control_pts_ids[3])
                 }
         ))
         .push_children(&control_pts_ids);
@@ -452,17 +477,27 @@ fn generate_mesh(
     mut query: Query<(&mut CustomMesh, &mut Handle<Mesh>, &mut Handle<StandardMaterial>)>,
     ui_state: Res<UiState>,
 ) {
-    if control_pts.iter_mut().all(|p| !p.is_changed()) {return;};
+    // if control_pts.iter_mut().all(|p| !p.is_changed()) {return;};
 
     for mut rs in road_segments.iter_mut() {
         for (mut _custom_mesh, mut mesh_handle, mut material_handle) in query.iter_mut(){
             
             let shape2d = ProfileShape::circle_8();
             
-            let control_pts_positions: Vec<Vec3> = rs.pts_ids
+            let mut control_pts_positions: Vec<Vec3> = rs.pts_ids
                 .iter()
                 .map(|pt_id| control_pts.get(*pt_id).unwrap().translation)
                 .collect();
+            
+            let control_pts_trms: Vec<&Transform> = control_pts
+                .iter()
+                .map(|x| x)
+                .collect();
+            
+            //locks mid points to start and end
+            //need to change its transform z scale to see the effect
+            control_pts_positions[1] = control_pts_trms[0].transform_point(-Vec3::Z * control_pts_trms[0].scale.z);
+            control_pts_positions[2] = control_pts_trms[3].transform_point( Vec3::Z * control_pts_trms[3].scale.z);
             
             let sections_amnt = ui_state.sections_amnt.try_into().unwrap();
 

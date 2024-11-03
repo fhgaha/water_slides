@@ -1,5 +1,6 @@
 use bevy::prelude::*;
 use bevy_egui::*;
+use bevy_inspector_egui::quick::WorldInspectorPlugin;
 
 pub struct MyUiPlugin;
 
@@ -7,7 +8,9 @@ impl Plugin for MyUiPlugin {
     fn build(&self, app: &mut App) {
         app
             .insert_resource(UiState { t_value: 0., sections_amnt: 8 })
-            .add_plugins(EguiPlugin)
+            .add_plugins(WorldInspectorPlugin::new())
+            //conflicts with inspector
+            // .add_plugins(EguiPlugin)
             .add_systems(Update, read_slider_value);
     }
 }
@@ -16,10 +19,6 @@ impl Plugin for MyUiPlugin {
 pub struct UiState {
     pub t_value: f32,
     pub sections_amnt: i32
-}
-
-pub struct UiForTranslation {
-
 }
 
 fn read_slider_value(
