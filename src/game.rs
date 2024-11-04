@@ -140,7 +140,7 @@ fn setup(
             }
         ));
     });
-
+ 
     // cube
     commands.spawn(PbrBundle {
         mesh: meshes.add(Cuboid::new(1.0, 1.0, 1.0)),
