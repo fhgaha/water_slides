@@ -1,5 +1,5 @@
 mod game;
-mod road_segment;
+mod tube_segment;
 mod my_ui;
 mod fps;
 

@@ -19,9 +19,9 @@ use oriented_point::OrientedPoint;
 use profile_shape::*;
 use crate::{game::{ControlPointsPlane, Cursor}, my_ui};
 
-pub struct RoadSegmentPlugin;
+pub struct TubeSegmentPlugin;
 
-impl Plugin for RoadSegmentPlugin {
+impl Plugin for TubeSegmentPlugin {
     fn build(&self, app: &mut App) {
         app.add_systems(Startup, setup);
         app.add_systems(
@@ -93,7 +93,7 @@ impl RoadSegment {
     fn get_profile_center_and_lines(&self, t: f32, profile_shape: &ProfileShape) -> (OrientedPoint, Vec<(Vec3, Vec3)>) {
         let op = self.get_bezier_oriented_point(t);
         let shape_2d = profile_shape;
-                
+        
         //lines
         let verts: Vec<Vec3> = shape_2d.vertices.iter()
             .map(|v| op.local_to_world_pos(v.point))
@@ -101,9 +101,9 @@ impl RoadSegment {
         
         let line_pairs: Vec<(Vec3, Vec3)> = shape_2d.line_indices
             .chunks(2)
-            .map(|line_idx| (verts[line_idx[0]], verts[line_idx[1]]))
+            .map(|line_idx_pair| (verts[line_idx_pair[0]], verts[line_idx_pair[1]]))
             .collect();
-
+        
         (op, line_pairs)
     }
     
@@ -476,8 +476,18 @@ fn generate_mesh(
     mut control_pts: Query<&mut Transform, With<ControlPointDraggable>>,
     mut query: Query<(&mut CustomMesh, &mut Handle<Mesh>, &mut Handle<StandardMaterial>)>,
     ui_state: Res<UiState>,
+    
+    mut config_store: ResMut<GizmoConfigStore>,
+    keyboard: Res<ButtonInput<KeyCode>>,
 ) {
     // if control_pts.iter_mut().all(|p| !p.is_changed()) {return;};
+    
+    //toggle gizmos drawing over objects
+    if keyboard.just_pressed(KeyCode::KeyD) {
+        for (_, config, _) in config_store.iter_mut() {
+            config.depth_bias = if config.depth_bias == 0. { -1. } else { 0. };
+        }
+    }
 
     for mut rs in road_segments.iter_mut() {
         for (mut _custom_mesh, mut mesh_handle, mut material_handle) in query.iter_mut(){
