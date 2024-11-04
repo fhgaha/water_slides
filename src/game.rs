@@ -134,7 +134,6 @@ fn setup(
             SpotLightBundle {
                 spot_light: SpotLight {
                     color: LIGHT_BLUE.into(),
-                    intensity: 100_000_000., 
                     ..default()
                 },
                 ..default()
