@@ -52,8 +52,6 @@ impl Plugin for GamePlugin {
             .add_systems(
                 Update,
                 (
-                    // update_point_light_pos,
-                    // update_spot_light_pos,
                     draw_cursor,
                     // check_quad_normals_system
                     draw_zero_point_gizmos,
@@ -168,42 +166,6 @@ fn setup_cursor(
         },
         Cursor,
     ));
-}
-
-fn update_point_light_pos(
-    mut commands: Commands,
-    mut cameras_and_point_lights: ParamSet<(
-        Query<&Transform, With<PanOrbitCamera>>,
-        Query<&mut Transform, With<PointLight>>,
-    )>,
-){
-    let mut trm: Transform = Transform::IDENTITY; 
-
-    for cam_trm in cameras_and_point_lights.p0().iter() {
-        trm  = cam_trm.clone();
-    }
-    
-    for mut point_light_trm in cameras_and_point_lights.p1().iter_mut() {
-        *point_light_trm = trm;
-    }
-}
-
-fn update_spot_light_pos(
-    mut commands: Commands,
-    mut cameras_and_spot_lights: ParamSet<(
-        Query<&Transform, With<PanOrbitCamera>>,
-        Query<&mut Transform, With<SpotLight>>,
-    )>,
-){
-    let mut trm: Transform = Transform::IDENTITY; 
-
-    for cam_trm in cameras_and_spot_lights.p0().iter() {
-        trm  = cam_trm.clone();
-    }
-    
-    for mut point_light_trm in cameras_and_spot_lights.p1().iter_mut() {
-        *point_light_trm = trm;
-    }
 }
 
 fn draw_cursor(
