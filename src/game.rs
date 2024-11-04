@@ -53,7 +53,7 @@ impl Plugin for GamePlugin {
                 Update,
                 (
                     // update_point_light_pos,
-                    update_spot_light_pos,
+                    // update_spot_light_pos,
                     draw_cursor,
                     // check_quad_normals_system
                     draw_zero_point_gizmos,
@@ -113,23 +113,36 @@ fn setup(
     // ));
 
     //     SpotLight
-    commands.spawn((
-        Name::new("Spot Light Bundle"),
-        SpotLightBundle {
-            spot_light: SpotLight {
-                color: LIGHT_BLUE.into(),
-                intensity: 100_000_000., 
-                ..default()
-            },
-            ..default()
-        }
-    ));
+    // commands.spawn((
+    //     Name::new("Spot Light Bundle"),
+    //     SpotLightBundle {
+    //         spot_light: SpotLight {
+    //             color: LIGHT_BLUE.into(),
+    //             intensity: 100_000_000., 
+    //             ..default()
+    //         },
+    //         ..default()
+    //     }
+    // ));
 
     //camera
     commands.spawn((
         Camera3dBundle::default(), 
         PanOrbitCamera::my_setup()
-    ));
+    ))
+    .with_children(|cam|{
+        cam.spawn((
+            Name::new("Spot Light Bundle"),
+            SpotLightBundle {
+                spot_light: SpotLight {
+                    color: LIGHT_BLUE.into(),
+                    intensity: 100_000_000., 
+                    ..default()
+                },
+                ..default()
+            }
+        ));
+    });
 
     // cube
     commands.spawn(PbrBundle {
