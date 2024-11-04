@@ -1,5 +1,7 @@
 mod my_camera;
 
+use std::ops::DerefMut;
+
 use bevy::{
     color::palettes::css::*, pbr::NotShadowCaster, prelude::*, render::{
         mesh::{Indices, PrimitiveTopology},
@@ -27,14 +29,14 @@ impl Plugin for GamePlugin {
             .add_plugins((
                 DefaultPlugins.set(WindowPlugin {
                     primary_window: Some(Window {
-                        resolution: WindowResolution::new(800., 600.),
+                        resolution: WindowResolution::new(1500., 600.),
                         position: WindowPosition::At(IVec2::ZERO),
                         ..default()
                     }),
                     ..default()
                 }),
                 PanOrbitCameraPlugin,
-                TubeSegmentPlugin,
+                // TubeSegmentPlugin,
                 MyUiPlugin,
                 FpsPlugin,
             ))
@@ -44,11 +46,14 @@ impl Plugin for GamePlugin {
                     setup,
                     setup_cursor,
                     // draw_quad
+                    // setup_control_points_plane
                 ),
             )
             .add_systems(
                 Update,
                 (
+                    // update_point_light_pos,
+                    update_spot_light_pos,
                     draw_cursor,
                     // check_quad_normals_system
                     draw_zero_point_gizmos,
@@ -62,7 +67,6 @@ fn setup(
     mut commands: Commands,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
-    _assets: Res<AssetServer>
 ) {
     // Ground
     commands.spawn((
@@ -76,35 +80,50 @@ fn setup(
         Ground,
     ));
 
-    // Transparent plane to move control points on
-    commands.spawn((
-        PbrBundle{
-            mesh: meshes.add(Plane3d::default().mesh().size(40., 40.)),
-            material: materials.add(
-                Color::srgba(0., 0., 1., 0.2),
-            ),
-            // visibility: Visibility::Hidden,
-            ..default()
-        },
-        NotShadowCaster,
-        ControlPointsPlane
-    ));
-
     // Light
-    commands.spawn(DirectionalLightBundle {
-        directional_light: DirectionalLight {
-            illuminance: 10_000.,
-            shadows_enabled: true,
+    //     DirectionalLight
+    commands.spawn((
+        Name::new("Directional Light"),
+        DirectionalLightBundle {
+            directional_light: DirectionalLight {
+                illuminance: 10_000.,
+                shadows_enabled: true,
+                ..default()
+            },
+            transform: Transform::from_rotation(Quat::from_euler(
+                EulerRot::YXZ,
+                f32::to_radians(150.),
+                f32::to_radians(-40. - 90.),
+                0.,
+            )),
             ..default()
-        },
-        transform: Transform::from_rotation(Quat::from_euler(
-            EulerRot::YXZ,
-            f32::to_radians(150.),
-            f32::to_radians(-40. - 90.),
-            0.,
-        )),
-        ..default()
-    });
+        })
+    );
+
+    //     PointLight
+    // commands.spawn((
+    //     Name::new("Point Light"),
+    //     PointLightBundle{
+    //         point_light: PointLight {
+    //             color: DARK_CYAN.into(),
+    //             ..default()
+    //         },
+    //         ..default()
+    //     },
+    // ));
+
+    //     SpotLight
+    commands.spawn((
+        Name::new("Spot Light Bundle"),
+        SpotLightBundle {
+            spot_light: SpotLight {
+                color: LIGHT_BLUE.into(),
+                intensity: 100_000_000., 
+                ..default()
+            },
+            ..default()
+        }
+    ));
 
     //camera
     commands.spawn((
@@ -112,6 +131,13 @@ fn setup(
         PanOrbitCamera::my_setup()
     ));
 
+    // cube
+    commands.spawn(PbrBundle {
+        mesh: meshes.add(Cuboid::new(1.0, 1.0, 1.0)),
+        material: materials.add(Color::srgb_u8(124, 144, 255)),
+        transform: Transform::from_xyz(0.0, 0.5, 0.0),
+        ..default()
+    });
 }
 
 fn setup_cursor(
@@ -131,6 +157,41 @@ fn setup_cursor(
     ));
 }
 
+fn update_point_light_pos(
+    mut commands: Commands,
+    mut cameras_and_point_lights: ParamSet<(
+        Query<&Transform, With<PanOrbitCamera>>,
+        Query<&mut Transform, With<PointLight>>,
+    )>,
+){
+    let mut trm: Transform = Transform::IDENTITY; 
+
+    for cam_trm in cameras_and_point_lights.p0().iter() {
+        trm  = cam_trm.clone();
+    }
+    
+    for mut point_light_trm in cameras_and_point_lights.p1().iter_mut() {
+        *point_light_trm = trm;
+    }
+}
+
+fn update_spot_light_pos(
+    mut commands: Commands,
+    mut cameras_and_spot_lights: ParamSet<(
+        Query<&Transform, With<PanOrbitCamera>>,
+        Query<&mut Transform, With<SpotLight>>,
+    )>,
+){
+    let mut trm: Transform = Transform::IDENTITY; 
+
+    for cam_trm in cameras_and_spot_lights.p0().iter() {
+        trm  = cam_trm.clone();
+    }
+    
+    for mut point_light_trm in cameras_and_spot_lights.p1().iter_mut() {
+        *point_light_trm = trm;
+    }
+}
 
 fn draw_cursor(
     cameras: Query<(&Camera, &GlobalTransform)>,
@@ -222,6 +283,26 @@ fn draw_quad(
     });
 }
 
+fn setup_control_points_plane(
+    mut commands: Commands,
+    mut meshes: ResMut<Assets<Mesh>>,
+    mut materials: ResMut<Assets<StandardMaterial>>,
+){
+    // Transparent plane to move control points on
+    commands.spawn((
+        PbrBundle{
+            mesh: meshes.add(Plane3d::default().mesh().size(40., 40.)),
+            material: materials.add(
+                Color::srgba(0., 0., 1., 0.2),
+            ),
+            // visibility: Visibility::Hidden,
+            ..default()
+        },
+        NotShadowCaster,
+        ControlPointsPlane
+    ));
+}
+
 #[allow(dead_code)]
 fn check_quad_normals_system(
     mut lights: Query<&mut Transform, With<PointLight>>,
@@ -276,17 +357,4 @@ fn rotate_control_points_plane(
             Vec3::Y
         );
     }
-
-    //doesnt work
-    // plane gizmos
-    // gizmos.primitive_3d(
-    //     &Plane3d {
-    //         half_size: plane_size,
-    //         ..default()
-    //     }, 
-    //     temp_trm.translation, 
-    //     temp_trm.rotation, 
-    //     Color::WHITE
-    // );
-    // gizmos.rect(temp_trm.translation, temp_trm.rotation, plane_size, Color::WHITE);
 }
