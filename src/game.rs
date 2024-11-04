@@ -1,5 +1,7 @@
 mod my_camera;
 
+use std::ops::DerefMut;
+
 use bevy::{
     color::palettes::css::*, pbr::NotShadowCaster, prelude::*, render::{
         mesh::{Indices, PrimitiveTopology},
@@ -10,7 +12,8 @@ use bevy_mod_raycast::prelude::*;
 use bevy_panorbit_camera::*;
 use bevy_rts_camera::*;
 use crate::my_ui::MyUiPlugin;
-use crate::road_segment::RoadSegmentPlugin;
+use crate::tube_segment::TubeSegmentPlugin;
+use crate::fps::FpsPlugin;
 
 pub struct GamePlugin;
 
@@ -26,22 +29,24 @@ impl Plugin for GamePlugin {
             .add_plugins((
                 DefaultPlugins.set(WindowPlugin {
                     primary_window: Some(Window {
-                        resolution: WindowResolution::new(800., 600.),
+                        resolution: WindowResolution::new(1500., 600.),
                         position: WindowPosition::At(IVec2::ZERO),
                         ..default()
                     }),
                     ..default()
                 }),
                 PanOrbitCameraPlugin,
-                RoadSegmentPlugin,
-                MyUiPlugin
+                // TubeSegmentPlugin,
+                MyUiPlugin,
+                FpsPlugin,
             ))
             .add_systems(
                 Startup,
                 (
                     setup,
                     setup_cursor,
-                    //draw_quad
+                    // draw_quad
+                    // setup_control_points_plane
                 ),
             )
             .add_systems(
@@ -60,7 +65,6 @@ fn setup(
     mut commands: Commands,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
-    _assets: Res<AssetServer>
 ) {
     // Ground
     commands.spawn((
@@ -74,42 +78,76 @@ fn setup(
         Ground,
     ));
 
-    // Transparent plane to move control points on
-    commands.spawn((
-        PbrBundle{
-            mesh: meshes.add(Plane3d::default().mesh().size(40., 40.)),
-            material: materials.add(
-                Color::srgba(0., 0., 1., 0.2),
-            ),
-            // visibility: Visibility::Hidden,
-            ..default()
-        },
-        NotShadowCaster,
-        ControlPointsPlane
-    ));
-
     // Light
-    commands.spawn(DirectionalLightBundle {
-        directional_light: DirectionalLight {
-            illuminance: 1000.,
-            shadows_enabled: true,
+    //     DirectionalLight
+    commands.spawn((
+        Name::new("Directional Light"),
+        DirectionalLightBundle {
+            directional_light: DirectionalLight {
+                illuminance: 10_000.,
+                shadows_enabled: true,
+                ..default()
+            },
+            transform: Transform::from_rotation(Quat::from_euler(
+                EulerRot::YXZ,
+                f32::to_radians(150.),
+                f32::to_radians(-40. - 90.),
+                0.,
+            )),
             ..default()
-        },
-        transform: Transform::from_rotation(Quat::from_euler(
-            EulerRot::YXZ,
-            f32::to_radians(150.),
-            f32::to_radians(-40.),
-            0.,
-        )),
-        ..default()
-    });
+        })
+    );
+
+    //     PointLight
+    // commands.spawn((
+    //     Name::new("Point Light"),
+    //     PointLightBundle{
+    //         point_light: PointLight {
+    //             color: DARK_CYAN.into(),
+    //             ..default()
+    //         },
+    //         ..default()
+    //     },
+    // ));
+
+    //     SpotLight
+    // commands.spawn((
+    //     Name::new("Spot Light Bundle"),
+    //     SpotLightBundle {
+    //         spot_light: SpotLight {
+    //             color: LIGHT_BLUE.into(),
+    //             intensity: 100_000_000., 
+    //             ..default()
+    //         },
+    //         ..default()
+    //     }
+    // ));
 
     //camera
     commands.spawn((
         Camera3dBundle::default(), 
         PanOrbitCamera::my_setup()
-    ));
+    ))
+    .with_children(|cam|{
+        cam.spawn((
+            Name::new("Spot Light Bundle"),
+            SpotLightBundle {
+                spot_light: SpotLight {
+                    color: LIGHT_BLUE.into(),
+                    ..default()
+                },
+                ..default()
+            }
+        ));
+    });
 
+    // cube
+    commands.spawn(PbrBundle {
+        mesh: meshes.add(Cuboid::new(1.0, 1.0, 1.0)),
+        material: materials.add(Color::srgb_u8(124, 144, 255)),
+        transform: Transform::from_xyz(0.0, 0.5, 0.0),
+        ..default()
+    });
 }
 
 fn setup_cursor(
@@ -128,7 +166,6 @@ fn setup_cursor(
         Cursor,
     ));
 }
-
 
 fn draw_cursor(
     cameras: Query<(&Camera, &GlobalTransform)>,
@@ -189,11 +226,16 @@ fn draw_quad(
     let points = vec![
         Vec3::new(-1.,  1., 0.),
         Vec3::new( 1.,  1., 0.),
-        Vec3::new(-1., -1., 0.),
         Vec3::new( 1., -1., 0.),
+        Vec3::new(-1., -1., 0.),
     ];
 
-    let tri_indices = vec![2, 1, 0, 1, 2, 3];
+    //0 ._____. 1
+    //  |    /|
+    //  |  /  |
+    //3 ./____. 2
+    //counter-clock-wise
+    let tri_indices = vec![0, 3, 1, 1, 3, 2];
 
     let mut mesh = Mesh::new(
         PrimitiveTopology::TriangleList,
@@ -213,6 +255,26 @@ fn draw_quad(
         }),
         ..default()
     });
+}
+
+fn setup_control_points_plane(
+    mut commands: Commands,
+    mut meshes: ResMut<Assets<Mesh>>,
+    mut materials: ResMut<Assets<StandardMaterial>>,
+){
+    // Transparent plane to move control points on
+    commands.spawn((
+        PbrBundle{
+            mesh: meshes.add(Plane3d::default().mesh().size(40., 40.)),
+            material: materials.add(
+                Color::srgba(0., 0., 1., 0.2),
+            ),
+            // visibility: Visibility::Hidden,
+            ..default()
+        },
+        NotShadowCaster,
+        ControlPointsPlane
+    ));
 }
 
 #[allow(dead_code)]
@@ -269,17 +331,4 @@ fn rotate_control_points_plane(
             Vec3::Y
         );
     }
-
-    //doesnt work
-    // plane gizmos
-    // gizmos.primitive_3d(
-    //     &Plane3d {
-    //         half_size: plane_size,
-    //         ..default()
-    //     }, 
-    //     temp_trm.translation, 
-    //     temp_trm.rotation, 
-    //     Color::WHITE
-    // );
-    // gizmos.rect(temp_trm.translation, temp_trm.rotation, plane_size, Color::WHITE);
 }
