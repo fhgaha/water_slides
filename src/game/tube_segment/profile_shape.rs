@@ -14,6 +14,7 @@ pub struct ProfileShape {
 	pub line_indices: Vec<usize>,
 }
 
+#[allow(dead_code)]
 impl ProfileShape {
 	pub fn vertex_count(&self) -> usize {
 		self.vertices.len()

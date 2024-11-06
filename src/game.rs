@@ -1,4 +1,7 @@
 mod my_camera;
+mod pipe;
+mod tube_segment;
+mod my_cursor;
 
 use std::ops::DerefMut;
 
@@ -11,14 +14,13 @@ use bevy::{
 use bevy_mod_raycast::prelude::*;
 use bevy_panorbit_camera::*;
 use bevy_rts_camera::*;
+use my_cursor::MyCursorPlugin;
+use tube_segment::TubeSegmentPlugin;
+use pipe::PipePlugin;
 use crate::my_ui::MyUiPlugin;
-use crate::tube_segment::TubeSegmentPlugin;
 use crate::fps::FpsPlugin;
 
 pub struct GamePlugin;
-
-#[derive(Component)]
-pub struct Cursor;
 
 #[derive(Component)]
 pub struct ControlPointsPlane;
@@ -36,15 +38,16 @@ impl Plugin for GamePlugin {
                     ..default()
                 }),
                 PanOrbitCameraPlugin,
-                // TubeSegmentPlugin, 
+                // TubeSegmentPlugin,
+                PipePlugin,
                 MyUiPlugin,
                 FpsPlugin,
+                MyCursorPlugin
             ))
             .add_systems(
                 Startup,
                 (
                     setup,
-                    setup_cursor,
                     // draw_quad
                     // setup_control_points_plane
                 ),
@@ -52,7 +55,6 @@ impl Plugin for GamePlugin {
             .add_systems(
                 Update,
                 (
-                    draw_cursor,
                     // check_quad_normals_system
                     draw_zero_point_gizmos,
                     rotate_control_points_plane,
@@ -142,80 +144,15 @@ fn setup(
     });
  
     // cube
-    commands.spawn(PbrBundle {
-        mesh: meshes.add(Cuboid::new(1.0, 1.0, 1.0)),
-        material: materials.add(Color::srgb_u8(124, 144, 255)),
-        transform: Transform::from_xyz(0.0, 0.5, 0.0),
-        ..default()
-    });
+    // commands.spawn(PbrBundle {
+    //     mesh: meshes.add(Cuboid::new(1.0, 1.0, 1.0)),
+    //     material: materials.add(Color::srgb_u8(124, 144, 255)),
+    //     transform: Transform::from_xyz(0.0, 0.5, 0.0),
+    //     ..default()
+    // });
 }
 
-fn setup_cursor(
-    mut commands: Commands,
-    mut meshes: ResMut<Assets<Mesh>>,
-    mut materials: ResMut<Assets<StandardMaterial>>,
-) {
-    commands.spawn((
-        PbrBundle {
-            mesh: meshes.add(Sphere::new(1.)),
-            material: materials.add(Color::srgb(1., 1., 1.)),
-            transform: Transform::from_xyz(0.0, 0.0, -23.0),
-            visibility: Visibility::Hidden,
-            ..default()
-        },
-        Cursor,
-    ));
-}
 
-fn draw_cursor(
-    cameras: Query<(&Camera, &GlobalTransform)>,
-    // control_points_planes: Query<&GlobalTransform, With<ControlPointsPlane>>,
-    windows: Query<&Window>,
-    mut cursor_transforms: Query<&mut Transform, With<Cursor>>,
-    // ctrl_pts_transforms: Query<&Transform, With<ControlPointDraggable>>,
-    cursor_interactables: 
-        Query<
-            &Transform, (
-                Or<(
-                    With<Ground>, 
-                    // With<ControlPointDraggable>
-                )>, 
-                Without<Cursor>
-            )
-        >,
-    mut raycast: Raycast,
-    mut gizmos: Gizmos,
-) {
-    let (camera, camera_transform) = cameras.single();
-    // let ground = ground_q.single();
-    let Some(cursor_position) = windows.single().cursor_position() else {return;};
-    let Some(ray) = camera.viewport_to_world(camera_transform, cursor_position) else {return;};
-
-    //raycast to control points plane
-    let intersections = raycast.cast_ray(
-        ray,
-        &RaycastSettings {
-            // filter: &|e| control_points_planes.contains(e),
-            filter: &|e| cursor_interactables.contains(e),
-            ..default()
-        },
-    );
-
-    let point: Vec3 = match intersections.len() > 0 {
-        true => intersections[0].1.position(),
-        false => Vec3::ZERO,
-    };
-
-    for mut cursor_trm in cursor_transforms.iter_mut() {
-        cursor_trm.translation = point;
-    }
-
-    //Gizmo sphere
-    gizmos
-        .sphere(point, default(), 1., Color::WHITE)
-        .resolution(8);
-
-}
 
 #[allow(dead_code)]
 fn draw_quad(

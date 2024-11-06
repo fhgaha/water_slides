@@ -17,7 +17,7 @@ use bevy_mod_raycast::prelude::*;
 use my_ui::*;
 use oriented_point::OrientedPoint;
 use profile_shape::*;
-use crate::{game::{ControlPointsPlane, Cursor}, my_ui};
+use crate::{game::{my_cursor::MyCursor, ControlPointsPlane}, my_ui};
 
 pub struct TubeSegmentPlugin;
 
@@ -258,7 +258,7 @@ fn update_states(
     mut control_points: Query<(&Transform, &mut ControlPointDraggable)>,
     mut ctrl_pts_plane: Query<
         &mut Transform, 
-        (With<ControlPointsPlane>, Without<Cursor>, Without<ControlPointDraggable>)
+        (With<ControlPointsPlane>, Without<MyCursor>, Without<ControlPointDraggable>)
     >
 ) {
     let (camera, camera_transform) = cameras.single();
@@ -300,8 +300,8 @@ fn update_positions(
     cameras: Query<(&Camera, &GlobalTransform)>,
     windows: Query<&Window>,
     mut raycast: Raycast,
-    mut cursors: Query<&mut Transform, (With<Cursor>, Without<ControlPointDraggable>)>,
-    planes: Query<(&ControlPointsPlane, &Transform), Without<Cursor>>,
+    mut cursors: Query<&mut Transform, (With<MyCursor>, Without<ControlPointDraggable>)>,
+    planes: Query<(&ControlPointsPlane, &Transform), Without<MyCursor>>,
     mut ctrl_pts_transforms: Query<
         (&mut Transform, &ControlPointDraggable), 
         Without<ControlPointsPlane>,
