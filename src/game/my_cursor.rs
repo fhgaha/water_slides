@@ -2,7 +2,7 @@ use bevy::{prelude::*, transform::commands};
 use bevy_mod_raycast::prelude::*;
 use bevy_rts_camera::Ground;
 use crate::game::pipe;
-
+use crate::game::tube_segment::ControlPointDraggable;
 
 pub struct MyCursorPlugin;
 
@@ -49,8 +49,8 @@ fn update_intersection(
         Query<
             &Transform, (Or<(
                     With<Ground>, 
-                    // With<ControlPointDraggable>
-                    With<pipe::BarEdge>
+                    With<ControlPointDraggable>,
+                    With<pipe::BarEdge>,
                 )>, 
                 Without<MyCursor>
             )

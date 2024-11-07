@@ -38,8 +38,8 @@ impl Plugin for GamePlugin {
                     ..default()
                 }),
                 PanOrbitCameraPlugin,
-                // TubeSegmentPlugin,
-                PipePlugin,
+                TubeSegmentPlugin,
+                // PipePlugin,
                 MyUiPlugin,
                 FpsPlugin,
                 MyCursorPlugin

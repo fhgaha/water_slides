@@ -135,7 +135,7 @@ enum ControlPointState {
 }
 
 #[derive(Component)]
-struct ControlPointDraggable {
+pub struct ControlPointDraggable {
     pub state: ControlPointState,
 }
 
