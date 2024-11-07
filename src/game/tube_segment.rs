@@ -107,6 +107,7 @@ impl RoadSegment {
         (op, line_pairs)
     }
     
+    #[allow(dead_code)]
     fn get_approx_len(&self) -> f32 {
         const PRESCISION: usize = 8;
         let mut points: Vec<Vec3> = vec![];

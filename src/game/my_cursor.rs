@@ -10,11 +10,13 @@ pub struct MyCursorPlugin;
 pub struct MyCursor;
 
 #[derive(Resource)]
-pub struct MyCursorIntersection(Option<(Entity, IntersectionData)>);
+pub struct MyCursorData {
+    pub intersection: Option<(Entity, IntersectionData)>
+}
 
 impl Plugin for MyCursorPlugin {
 	fn build(&self, app: &mut App) {
-		app.insert_resource(MyCursorIntersection(None));
+		app.insert_resource(MyCursorData{ intersection: None });
 		app.add_systems(Startup, setup);
 		app.add_systems(Update, (
             update_intersection,
@@ -54,10 +56,9 @@ fn update_intersection(
             )
         >,
     mut raycast: Raycast,
-	mut res_my_cursor_intersection: ResMut<MyCursorIntersection>,
+	mut res_my_cursor_intersection: ResMut<MyCursorData>,
 ) {
     let (camera, camera_transform) = cameras.single();
-    // let ground = ground_q.single();
     let Some(cursor_position) = windows.single().cursor_position() else {return;};
     let Some(ray) = camera.viewport_to_world(camera_transform, cursor_position) else {return;};
 
@@ -65,31 +66,24 @@ fn update_intersection(
     let intersections = raycast.cast_ray(
         ray,
         &RaycastSettings {
-            // filter: &|e| control_points_planes.contains(e),
             filter: &|e| cursor_interactables.contains(e),
             ..default()
         },
     );
 
     //register in resourse
-	res_my_cursor_intersection.0 = match intersections.len() > 0 {
+	res_my_cursor_intersection.intersection = match intersections.len() > 0 {
 		true => Some(intersections[0].clone()),
 		false => None,
 	};
 }
 
 fn draw(
-    mut res_my_cursor_intersection: ResMut<MyCursorIntersection>,
+    mut res_my_cursor_intersection: ResMut<MyCursorData>,
     mut cursor_transforms: Query<&mut Transform, With<MyCursor>>,
     mut gizmos: Gizmos,
 ){
-    // match &res_my_cursor_intersection.0 {
-    //     Some(val) => println!("Some val: {:#?}", val),
-    //     None => println!("None"),
-    // }
-    // println!();
-
-    let point: Vec3 = match &res_my_cursor_intersection.0 {
+    let point: Vec3 = match &res_my_cursor_intersection.intersection {
         Some(val) => val.1.position(),
         None => Vec3::ZERO,
     };

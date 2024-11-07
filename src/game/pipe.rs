@@ -1,10 +1,17 @@
 use bevy::prelude::*;
 use bevy_mod_raycast::prelude::*;
 
+use super::my_cursor::{self, MyCursor, MyCursorData};
+
 pub struct PipePlugin;
 
 #[derive(Component)]
 pub struct BarEdge;
+
+#[derive(Component)]
+pub struct Pipe{
+    pub list: Vec<Transform>
+}
 
 impl Plugin for PipePlugin {
 	fn build(&self, app: &mut App) {
@@ -29,38 +36,41 @@ fn setup(
 }
 
 fn update(
-	// cameras: Query<(&Camera, &GlobalTransform)>,
-	// windows: Query<&Window>,
-    // mut cursor_transforms: Query<&mut Transform, With<MyCursor>>,
-    // bar_edges: Query<&Transform, (With<BarEdge>, Without<MyCursor>)>,
-	// mut raycast: Raycast,
-    // mut gizmos: Gizmos,
+    res_cursor_data: Res<MyCursorData>,
+    cursors: Query<(&Transform, &MyCursor)>,
+    mouse_buttons: Res<ButtonInput<MouseButton>>,
+    mut commands: Commands,
+    mut meshes: ResMut<Assets<Mesh>>,
+    mut materials: ResMut<Assets<StandardMaterial>>,
+    bar_edges: Query<&BarEdge>,
 ){
-	// let (camera, camera_transform) = cameras.single();
-    // let Some(cursor_position) = windows.single().cursor_position() else {return;};
-    // let Some(ray) = camera.viewport_to_world(camera_transform, cursor_position) else {return;};
+    let data = res_cursor_data.into_inner();
+    if let Some((ent, intersection_data)) = &data.intersection {
+        if bar_edges.contains(*ent) {
+            for (cursor_trm, my_cursor) in cursors.iter() {
+                if mouse_buttons.pressed(MouseButton::Left) {
+                    
+                    let dist: f32 = 1.;
 
-    // //raycast to control points plane
-    // let intersections = raycast.cast_ray(
-    //     ray,
-    //     &RaycastSettings {
-    //         filter: &|e| bar_edges.contains(e),
-    //         ..default()
-    //     },
-    // );
+                    let trm = *cursor_trm;
 
-    // let point: Vec3 = match intersections.len() > 0 {
-    //     true => intersections[0].1.position(),
-    //     false => Vec3::ZERO,
-    // };
+                    let new_transl = trm.translation + -trm.forward() * dist;
 
+                    let new_trm = Transform::from_translation(new_transl);
 
-    // for mut cursor_trm in cursor_transforms.iter_mut() {
-    //     cursor_trm.translation = point;
-    // }
+                    commands.spawn((
+                        Name::new("Polygon surface"),
+                        BarEdge,
+                        PbrBundle{
+                            mesh: meshes.add(RegularPolygon::default()),
+                            material: materials.add(StandardMaterial::default()),
+                            transform: new_trm,
+                            ..default()
+                        }
+                    ));
 
-    // //Gizmo sphere
-    // gizmos
-    //     .sphere(point, default(), 1., Color::WHITE)
-    //     .resolution(8);
+                }
+            }   
+        }
+    }
 }
