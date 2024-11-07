@@ -4,20 +4,21 @@ mod profile_shape;
 use core::str;
 use std::ops::DerefMut;
 use bevy::{
-    color::palettes::css::{AQUA, YELLOW}, 
-    prelude::*, 
-    render::{
+    color::palettes::css::{AQUA, YELLOW}, math::{NormedVectorSpace, VectorSpace}, prelude::*, render::{
         mesh::{
             Indices, PrimitiveTopology
         }, 
         render_asset::RenderAssetUsages
     }
 };
+use bevy_egui::egui::lerp;
 use bevy_mod_raycast::prelude::*;
 use my_ui::*;
 use oriented_point::OrientedPoint;
 use profile_shape::*;
 use crate::{game::{my_cursor::MyCursor, ControlPointsPlane}, my_ui};
+
+use super::my_cursor::MyCursorData;
 
 pub struct TubeSegmentPlugin;
 
@@ -31,8 +32,8 @@ impl Plugin for TubeSegmentPlugin {
                     update_states, 
                     update_positions, 
                     // draw_spline,
-                    draw_curve_using_road_segment,
-                    draw_profile,
+                    // draw_curve_using_road_segment,
+                    // draw_profile,
                     generate_mesh,
                 ).chain()
         );
@@ -194,15 +195,15 @@ fn setup(
     }
 
     //moving sphere
-    commands.spawn((
-        PbrBundle{
-            mesh: meshes.add(Sphere::new(0.2)),
-            material: materials.add(Color::srgba(1., 0., 0., 1.)),
-            transform: Transform::from_translation(positions[0]),
-            ..default()
-        },
-        MovingSphere
-    ));
+    // commands.spawn((
+    //     PbrBundle{
+    //         mesh: meshes.add(Sphere::new(0.2)),
+    //         material: materials.add(Color::srgba(1., 0., 0., 1.)),
+    //         transform: Transform::from_translation(positions[0]),
+    //         ..default()
+    //     },
+    //     MovingSphere
+    // ));
 
 
     //generated mesh
@@ -225,6 +226,7 @@ fn setup(
 
     // Render the mesh with the custom texture using a PbrBundle, add the marker.
     commands.spawn((
+        Name::new("Custom mesh"),
         PbrBundle {
             mesh: mesh_handle.clone(),
             material: materials.add(StandardMaterial {
@@ -238,57 +240,76 @@ fn setup(
     ));
 
     //road segment
-    commands
-        .spawn((
-                SpatialBundle::default(),
-                RoadSegment {
-                    curve: CubicBezier::new([positions]),
-                    pts_ids: control_pts_ids,
-                    start_pt_id: Some(control_pts_ids[0]),
-                    end_pt_id: Some(control_pts_ids[3])
-                }
-        ))
-        .push_children(&control_pts_ids);
+    commands.spawn((
+        Name::new("Road Segment"),
+        SpatialBundle::default(),
+        RoadSegment {
+            curve: CubicBezier::new([positions]),
+            pts_ids: control_pts_ids,
+            start_pt_id: Some(control_pts_ids[0]),
+            end_pt_id: Some(control_pts_ids[3])
+        }
+    ))
+    .push_children(&control_pts_ids);
 }
 
 fn update_states(
-    cameras: Query<(&Camera, &GlobalTransform)>,
-    windows: Query<&Window>,
+    // cameras: Query<(&Camera, &GlobalTransform)>,
+    // windows: Query<&Window>,
     buttons: Res<ButtonInput<MouseButton>>,
-    mut raycast: Raycast,
+    // mut raycast: Raycast,
     mut control_points: Query<(&Transform, &mut ControlPointDraggable)>,
     mut ctrl_pts_plane: Query<
         &mut Transform, 
         (With<ControlPointsPlane>, Without<MyCursor>, Without<ControlPointDraggable>)
-    >
+    >,
+    res_cursor_data: Res<MyCursorData>,
+    cursors: Query<(&Transform, &MyCursor)>,
 ) {
-    let (camera, camera_transform) = cameras.single();
-    let Some(cursor_position) = windows.single().cursor_position() else {return; };
-    let Some(ray) = camera.viewport_to_world(camera_transform, cursor_position) else {return;};
-    
-    let Ok(mut ctrl_pts_plane_trm) = ctrl_pts_plane.get_single_mut() else {return;};
+    let data = res_cursor_data.into_inner();
+    if let Some((ent, intersection_data)) = &data.intersection {
+        if control_points.contains(*ent) {
+            for (cursor_trm, my_cursor) in cursors.iter() {
 
-    let intersections = raycast.cast_ray(
-        ray,
-        &RaycastSettings {
-            filter: &|e| control_points.contains(e),
-            ..default()
-        },
-    );
-    
-    if intersections.len() > 0 {
-        if let Ok((ctrl_pt_trm, mut ctrl_pt_draggable)) 
-        = control_points.get_mut(intersections[0].0) {
-            ctrl_pt_draggable.state = if buttons.pressed(MouseButton::Left) {
-                if ctrl_pt_draggable.state == ControlPointState::None {
-                    ctrl_pts_plane_trm.translation = ctrl_pt_trm.translation;
+                if let Ok((ctrl_pt_trm, mut ctrl_pt_draggable)) 
+                    = control_points.get_mut(*ent) {
+                    ctrl_pt_draggable.state = if buttons.pressed(MouseButton::Left) {
+                        ControlPointState::Drag
+                    } else {
+                        ControlPointState::None
+                    };
                 }
-                ControlPointState::Drag
-            } else {
-                ControlPointState::None
-            };
+            }
         }
     }
+
+    // let (camera, camera_transform) = cameras.single();
+    // let Some(cursor_position) = windows.single().cursor_position() else {return; };
+    // let Some(ray) = camera.viewport_to_world(camera_transform, cursor_position) else {return;};
+    
+    // let Ok(mut ctrl_pts_plane_trm) = ctrl_pts_plane.get_single_mut() else {return;};
+
+    // let intersections = raycast.cast_ray(
+    //     ray,
+    //     &RaycastSettings {
+    //         filter: &|e| control_points.contains(e),
+    //         ..default()
+    //     },
+    // );
+    
+    // if intersections.len() > 0 {
+    //     if let Ok((ctrl_pt_trm, mut ctrl_pt_draggable)) 
+    //     = control_points.get_mut(intersections[0].0) {
+    //         ctrl_pt_draggable.state = if buttons.pressed(MouseButton::Left) {
+    //             if ctrl_pt_draggable.state == ControlPointState::None {
+    //                 ctrl_pts_plane_trm.translation = ctrl_pt_trm.translation;
+    //             }
+    //             ControlPointState::Drag
+    //         } else {
+    //             ControlPointState::None
+    //         };
+    //     }
+    // }
 }
 
 //if dragging cp
@@ -527,7 +548,23 @@ fn generate_mesh(
             for ring in 0..=edge_ring_count {
                 
                 let t: f32 = ring as f32 / (edge_ring_count - 1) as f32;
+                
+                
                 let op = rs.get_bezier_oriented_point(t);
+
+
+                // let up = Vec3::lerp( 
+                //      control_pts_trms[0].up().normalize(),
+                //      control_pts_trms[3].up().normalize(), 
+                //      t);
+                // let tangent = rs.curve.to_curve().velocity(t).normalize();
+                // let rot = look_rotation(tangent, up);
+
+                // let op = OrientedPoint{
+                //     pos: rs.curve.to_curve().position(t),
+                //     rot
+                // };
+
     
                 for i in 0..shape2d.vertex_count() {
                     verts.push(op.local_to_world_pos(shape2d.vertices[i].point));
@@ -595,4 +632,13 @@ fn generate_mesh(
             *mesh_handle = mesh_asset_server.add(new_mesh);
         }
     }
+}
+
+fn look_rotation(forward: Vec3, upwards: Vec3) -> Quat {
+    let forward_normalized = forward.normalize();
+    let upwards_normalized = upwards.normalize();
+    let right = forward_normalized.cross(upwards_normalized).normalize();
+    let up = right.cross(forward_normalized).normalize();
+    
+    Quat::from_mat3(&Mat3::from_cols(right, up, -forward_normalized))
 }
