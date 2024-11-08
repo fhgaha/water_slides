@@ -2,7 +2,7 @@ mod oriented_point;
 mod profile_shape;
 
 use core::str;
-use std::ops::DerefMut;
+use std::{f32::consts::PI, ops::DerefMut};
 use bevy::{
     color::palettes::css::{AQUA, YELLOW}, math::{NormedVectorSpace, VectorSpace}, prelude::*, render::{
         mesh::{
@@ -154,28 +154,13 @@ fn setup(
     asset_server: Res<AssetServer>,
 ) {
     let positions = [
-        Vec3::new(-10., 0.,  10.),
-        Vec3::new(-10., 0., -10.),
-        Vec3::new( 10., 0., -10.),
-        Vec3::new( 10., 0.,  10.),
+        Vec3::new( 10., 25.,   0.),
+        Vec3::new(-10.,  5., -10.),
+        Vec3::new( 10.,  5., -10.),
+        Vec3::new(  5.,  5.,  25.),
     ];
 
     //control points
-    // let control_pts_ids: [Entity; 4] = positions.map(|p|{
-    //     commands.spawn((
-    //         PbrBundle {
-    //             mesh: meshes.add(Sphere::new(1.)),
-    //             material: materials.add(Color::srgba(1., 1., 1., 0.2)),
-    //             transform: Transform::from_translation(p),
-    //             ..default()
-    //         },
-    //         ControlPointDraggable {
-    //             state: ControlPointState::None,
-    //         },
-    //     ))
-    //     .id()
-    // });
-
     let mut control_pts_ids: [Entity; 4] = [Entity::PLACEHOLDER; 4];
 
     for i in 0..positions.len() {
@@ -184,7 +169,9 @@ fn setup(
             PbrBundle {
                 mesh: meshes.add(Sphere::new(1.)),
                 material: materials.add(Color::srgba(1., 1., 1., 0.2)),
-                transform: Transform::from_translation(positions[i]),
+                transform: Transform::from_translation(positions[i])
+                    .with_scale(Vec3::Z * 4.)
+                    .with_rotation(Quat::from_euler(EulerRot::YXZ, 0., PI, 0.)),
                 ..default()
             },
             ControlPointDraggable {
@@ -194,21 +181,8 @@ fn setup(
         .id()
     }
 
-    //moving sphere
-    // commands.spawn((
-    //     PbrBundle{
-    //         mesh: meshes.add(Sphere::new(0.2)),
-    //         material: materials.add(Color::srgba(1., 0., 0., 1.)),
-    //         transform: Transform::from_translation(positions[0]),
-    //         ..default()
-    //     },
-    //     MovingSphere
-    // ));
-
-
     //generated mesh
 
-    let texture_handle: Handle<Image> = asset_server.load("textures/uv_mapper.png");
     let mesh_handle: Handle<Mesh> = meshes.add(
         Mesh::new(
             PrimitiveTopology::TriangleList, 
@@ -224,21 +198,6 @@ fn setup(
         .with_computed_normals()
     );
 
-    // Render the mesh with the custom texture using a PbrBundle, add the marker.
-    commands.spawn((
-        Name::new("Custom mesh"),
-        PbrBundle {
-            mesh: mesh_handle.clone(),
-            material: materials.add(StandardMaterial {
-                // base_color_texture: Some(texture_handle),
-                base_color: Color::Srgba(AQUA), 
-                ..default()
-            }),
-            ..default()
-        },
-        CustomMesh,
-    ));
-
     //road segment
     commands.spawn((
         Name::new("Road Segment"),
@@ -250,14 +209,25 @@ fn setup(
             end_pt_id: Some(control_pts_ids[3])
         }
     ))
-    .push_children(&control_pts_ids);
+    .push_children(&control_pts_ids)
+    .with_children(|parent|{
+        parent.spawn((
+            Name::new("Custom mesh"),
+            PbrBundle {
+                mesh: mesh_handle.clone(),
+                material: materials.add(StandardMaterial {
+                    base_color: Color::Srgba(AQUA), 
+                    ..default()
+                }),
+                ..default()
+            },
+            CustomMesh,
+        ));
+    });
 }
 
 fn update_states(
-    // cameras: Query<(&Camera, &GlobalTransform)>,
-    // windows: Query<&Window>,
     buttons: Res<ButtonInput<MouseButton>>,
-    // mut raycast: Raycast,
     mut control_points: Query<(&Transform, &mut ControlPointDraggable)>,
     mut ctrl_pts_plane: Query<
         &mut Transform, 
@@ -282,41 +252,7 @@ fn update_states(
             }
         }
     }
-
-    // let (camera, camera_transform) = cameras.single();
-    // let Some(cursor_position) = windows.single().cursor_position() else {return; };
-    // let Some(ray) = camera.viewport_to_world(camera_transform, cursor_position) else {return;};
-    
-    // let Ok(mut ctrl_pts_plane_trm) = ctrl_pts_plane.get_single_mut() else {return;};
-
-    // let intersections = raycast.cast_ray(
-    //     ray,
-    //     &RaycastSettings {
-    //         filter: &|e| control_points.contains(e),
-    //         ..default()
-    //     },
-    // );
-    
-    // if intersections.len() > 0 {
-    //     if let Ok((ctrl_pt_trm, mut ctrl_pt_draggable)) 
-    //     = control_points.get_mut(intersections[0].0) {
-    //         ctrl_pt_draggable.state = if buttons.pressed(MouseButton::Left) {
-    //             if ctrl_pt_draggable.state == ControlPointState::None {
-    //                 ctrl_pts_plane_trm.translation = ctrl_pt_trm.translation;
-    //             }
-    //             ControlPointState::Drag
-    //         } else {
-    //             ControlPointState::None
-    //         };
-    //     }
-    // }
 }
-
-//if dragging cp
-//raycast, detect cp
-//clip plane to the cp
-//raycast, detect plane
-//move cp on plane surface
 
 fn update_positions(
     cameras: Query<(&Camera, &GlobalTransform)>,
@@ -552,18 +488,18 @@ fn generate_mesh(
                 
                 let op = rs.get_bezier_oriented_point(t);
 
-
                 // let up = Vec3::lerp( 
-                //      control_pts_trms[0].up().normalize(),
-                //      control_pts_trms[3].up().normalize(), 
-                //      t);
+                //      control_pts_trms[0].up().as_vec3(),
+                //      control_pts_trms[3].up().as_vec3(), 
+                //      t).normalize();
                 // let tangent = rs.curve.to_curve().velocity(t).normalize();
-                // let rot = look_rotation(tangent, up);
+                
+                // let rot = Quat::from_rotation_arc(up, tangent);
 
-                // let op = OrientedPoint{
-                //     pos: rs.curve.to_curve().position(t),
-                //     rot
-                // };
+                let op = OrientedPoint{
+                    pos: rs.curve.to_curve().position(t),
+                    rot
+                };
 
     
                 for i in 0..shape2d.vertex_count() {
@@ -632,13 +568,4 @@ fn generate_mesh(
             *mesh_handle = mesh_asset_server.add(new_mesh);
         }
     }
-}
-
-fn look_rotation(forward: Vec3, upwards: Vec3) -> Quat {
-    let forward_normalized = forward.normalize();
-    let upwards_normalized = upwards.normalize();
-    let right = forward_normalized.cross(upwards_normalized).normalize();
-    let up = right.cross(forward_normalized).normalize();
-    
-    Quat::from_mat3(&Mat3::from_cols(right, up, -forward_normalized))
 }
